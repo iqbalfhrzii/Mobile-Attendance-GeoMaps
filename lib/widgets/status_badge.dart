@@ -6,11 +6,13 @@ import '../core/theme.dart';
 /// A small colored badge showing attendance status.
 class StatusBadge extends StatelessWidget {
   final AttendanceStatus status;
+  final LocationStatus? locationStatus;
   final bool showIcon;
 
   const StatusBadge({
     super.key,
     required this.status,
+    this.locationStatus,
     this.showIcon = true,
   });
 
@@ -44,6 +46,19 @@ class StatusBadge extends StatelessWidget {
     }
   }
 
+  String get _displayLabel {
+    String base = status.label;
+    if (locationStatus != null && 
+        (status == AttendanceStatus.present || status == AttendanceStatus.late_)) {
+      if (locationStatus == LocationStatus.inside) {
+        base += ' (Di Lokasi)';
+      } else if (locationStatus == LocationStatus.outside) {
+        base += ' (Luar Lokasi)';
+      }
+    }
+    return base;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -60,7 +75,7 @@ class StatusBadge extends StatelessWidget {
             const SizedBox(width: 4),
           ],
           Text(
-            status.label,
+            _displayLabel,
             style: TextStyle(
               color: _foregroundColor,
               fontSize: 12,

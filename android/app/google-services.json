@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "901454923490",
+    "project_id": "absensigeo-145f2",
+    "storage_bucket": "absensigeo-145f2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:901454923490:android:35127917a603c553a900bb",
+        "android_client_info": {
+          "package_name": "com.mahligai.absensi"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDWYxYxv3dqUsXy2fpBUMTY46LcSABsU30"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

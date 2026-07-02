@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
 
@@ -17,36 +18,42 @@ class AdminPage extends ConsumerWidget {
         Icons.people_outline_rounded,
         const Color(0xFF1A56DB),
         'Tambah, edit, hapus data karyawan',
+        '/admin/employees',
       ),
       _MenuItem(
         'Laporan Absensi',
         Icons.assessment_outlined,
         AppTheme.accentTeal,
         'Lihat rekap absensi semua karyawan',
+        '/admin/attendances',
+      ),
+      _MenuItem(
+        'Laporan Bulanan',
+        Icons.bar_chart_rounded,
+        AppTheme.warningOrange,
+        'Lihat rekapitulasi per bulan',
+        '/admin/reports',
       ),
       _MenuItem(
         'Kelola Shift',
         Icons.schedule_outlined,
         AppTheme.accentAmber,
         'Atur jadwal shift karyawan',
-      ),
-      _MenuItem(
-        'Pengaturan',
-        Icons.settings_outlined,
-        AppTheme.warningOrange,
-        'Konfigurasi aplikasi',
+        '/admin/shift',
       ),
       _MenuItem(
         'Lokasi Kantor',
         Icons.location_on_outlined,
         AppTheme.errorRed,
         'Atur titik lokasi absensi',
+        '/admin/location',
       ),
       _MenuItem(
         'Notifikasi',
         Icons.notifications_outlined,
         AppTheme.successGreen,
         'Pengaturan pengingat',
+        '',
       ),
     ];
 
@@ -99,8 +106,9 @@ class _MenuItem {
   final IconData icon;
   final Color color;
   final String subtitle;
+  final String path;
 
-  const _MenuItem(this.title, this.icon, this.color, this.subtitle);
+  const _MenuItem(this.title, this.icon, this.color, this.subtitle, this.path);
 }
 
 class _AdminCard extends StatelessWidget {
@@ -115,15 +123,19 @@ class _AdminCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${item.title} — Coming Soon'),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              duration: const Duration(seconds: 1),
-            ),
-          );
+          if (item.path.isNotEmpty) {
+            context.push(item.path);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${item.title} — Coming Soon'),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                duration: const Duration(seconds: 1),
+              ),
+            );
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(16),

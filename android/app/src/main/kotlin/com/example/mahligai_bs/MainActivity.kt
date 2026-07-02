@@ -1,4 +1,4 @@
-package com.example.mahligai_bs
+package com.mahligai.absensi
 
 import io.flutter.embedding.android.FlutterActivity
 

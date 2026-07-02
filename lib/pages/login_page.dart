@@ -10,6 +10,10 @@ import '../providers/auth_provider.dart';
 import '../widgets/gradient_button.dart';
 
 /// Login page with glassmorphism design.
+///
+/// Dummy login berdasarkan email:
+/// - admin@demo.com → role admin (5 tabs: Home, Absensi, Riwayat, Admin, Profil)
+/// - employee@demo.com → role employee (4 tabs: Home, Absensi, Riwayat, Profil)
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -71,7 +75,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
     authState.when(
       data: (user) {
         if (user != null) {
-          context.go('/main');
+          // Navigate to main — route guard handles the rest
+          context.go('/main/home');
         }
       },
       error: (e, _) {
@@ -173,11 +178,12 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   TextFormField(
                                     controller: _emailController,
                                     keyboardType: TextInputType.emailAddress,
-                                    style: const TextStyle(color: Colors.white),
+                                    style:
+                                        const TextStyle(color: Colors.white),
                                     decoration: _inputDecoration(
                                       'Email',
                                       Icons.email_outlined,
-                                      AppConstants.adminEmail,
+                                      'email@perusahaan.com',
                                     ),
                                     validator: (v) {
                                       if (v == null || v.trim().isEmpty) {
@@ -192,7 +198,8 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                   TextFormField(
                                     controller: _passwordController,
                                     obscureText: _obscurePassword,
-                                    style: const TextStyle(color: Colors.white),
+                                    style:
+                                        const TextStyle(color: Colors.white),
                                     decoration: _inputDecoration(
                                       'Password',
                                       Icons.lock_outline_rounded,
@@ -228,57 +235,11 @@ class _LoginPageState extends ConsumerState<LoginPage>
                                     label: 'Masuk',
                                     icon: Icons.login_rounded,
                                     isLoading: isLoading,
-                                    onPressed: isLoading ? null : _handleLogin,
+                                    onPressed:
+                                        isLoading ? null : _handleLogin,
                                   ),
                                 ],
                               ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 28),
-
-                      // Credentials hint
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(10),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Colors.white.withAlpha(15),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Icon(Icons.info_outline_rounded,
-                                        size: 16,
-                                        color: theme.colorScheme.primary),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Demo Credentials',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.primary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 10),
-                                _credentialRow('Admin',
-                                    AppConstants.adminEmail, AppConstants.adminPassword),
-                                const SizedBox(height: 4),
-                                _credentialRow('Employee',
-                                    AppConstants.employeeEmail, AppConstants.employeePassword),
-                              ],
                             ),
                           ),
                         ),
@@ -321,14 +282,4 @@ class _LoginPageState extends ConsumerState<LoginPage>
     );
   }
 
-  Widget _credentialRow(String role, String email, String password) {
-    return Text(
-      '$role: $email / $password',
-      style: TextStyle(
-        color: Colors.white.withAlpha(100),
-        fontSize: 11,
-        fontFamily: 'monospace',
-      ),
-    );
-  }
 }

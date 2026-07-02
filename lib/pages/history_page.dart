@@ -56,37 +56,42 @@ class HistoryPage extends ConsumerWidget {
                 ),
               ),
               data: (records) {
-                if (records.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.history_rounded,
-                            size: 64,
-                            color: theme.colorScheme.onSurface
-                                .withAlpha(60)),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Belum ada riwayat absensi',
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: theme.colorScheme.onSurface
-                                .withAlpha(100),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
                 return RefreshIndicator(
                   onRefresh: () => ref.refresh(attendanceHistoryProvider.future),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    itemCount: records.length,
-                    itemBuilder: (context, index) {
-                      return AttendanceCard(attendance: records[index]);
-                    },
-                  ),
+                  child: records.isEmpty
+                      ? LayoutBuilder(
+                          builder: (context, constraints) => SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                              child: Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.history_rounded,
+                                        size: 64,
+                                        color: theme.colorScheme.onSurface.withAlpha(60)),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Belum ada riwayat absensi',
+                                      style: theme.textTheme.bodyLarge?.copyWith(
+                                        color: theme.colorScheme.onSurface.withAlpha(100),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: records.length,
+                          itemBuilder: (context, index) {
+                            return AttendanceCard(attendance: records[index]);
+                          },
+                        ),
                 );
               },
             ),

@@ -1,6 +1,9 @@
 # Miscellaneous
 *.class
 *.log
+*.hprof
+*log*.txt
+*crash*.txt
 *.pyc
 *.swp
 .DS_Store

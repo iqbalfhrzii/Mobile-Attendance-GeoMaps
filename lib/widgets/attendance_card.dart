@@ -35,7 +35,10 @@ class AttendanceCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                StatusBadge(status: attendance.attendanceStatus),
+                StatusBadge(
+                  status: attendance.attendanceStatus,
+                  locationStatus: attendance.locationStatus,
+                ),
               ],
             ),
             const SizedBox(height: 12),

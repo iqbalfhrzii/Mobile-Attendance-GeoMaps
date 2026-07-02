@@ -7,10 +7,18 @@ import 'package:intl/intl.dart';
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/attendance_provider.dart';
+import '../providers/office_location_provider.dart';
 import '../providers/shift_provider.dart';
+import '../services/location_service.dart';
 import '../widgets/gradient_button.dart';
+import 'attendance/location_confirm_page.dart';
 
 /// Attendance check-in / check-out page with live clock.
+///
+/// When user taps Check In / Check Out:
+/// 1. GPS permission + location fetch
+/// 2. Distance calculation from office
+/// 3. Navigate to LocationConfirmPage → CameraPage → PreviewPage → save
 class AttendancePage extends ConsumerStatefulWidget {
   const AttendancePage({super.key});
 
@@ -21,6 +29,9 @@ class AttendancePage extends ConsumerStatefulWidget {
 class _AttendancePageState extends ConsumerState<AttendancePage> {
   late Timer _clockTimer;
   DateTime _now = DateTime.now();
+  bool _isLoadingLocation = false;
+
+  final LocationService _locationService = LocationService();
 
   @override
   void initState() {
@@ -34,6 +45,86 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   void dispose() {
     _clockTimer.cancel();
     super.dispose();
+  }
+
+  /// Start the attendance flow: GPS → location confirm → camera → preview.
+  Future<void> _startAttendanceFlow({
+    required bool isCheckIn,
+    String? attendanceId,
+  }) async {
+    if (_isLoadingLocation) return;
+    setState(() => _isLoadingLocation = true);
+
+    try {
+      // Get office location
+      final office = await ref.read(primaryOfficeProvider.future);
+
+      // Check permission + get GPS + calculate distance
+      final locationResult = await _locationService.getLocationAndDistance(
+        officeLat: office.latitude,
+        officeLng: office.longitude,
+        radiusMeter: office.radiusMeter,
+      );
+
+      if (!mounted) return;
+
+      // Navigate to location confirmation page
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LocationConfirmPage(
+            locationResult: locationResult,
+            isCheckIn: isCheckIn,
+            attendanceId: attendanceId,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+
+      // Show permission dialog for denied/disabled
+      if (errorMsg.contains('ditolak permanen') ||
+          errorMsg.contains('pengaturan')) {
+        _showPermissionDialog(errorMsg);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: AppTheme.errorRed,
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingLocation = false);
+    }
+  }
+
+  void _showPermissionDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppTheme.warningOrange),
+            SizedBox(width: 8),
+            Text('Izin Diperlukan'),
+          ],
+        ),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Tutup'),
+          ),
+        ],
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+    );
   }
 
   @override
@@ -139,134 +230,159 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
             ),
             const SizedBox(height: 24),
 
-            // ── Action ───────────────────────────────────────────────
-            todayAsync.when(
-              loading: () => const CircularProgressIndicator(),
-              error: (e, _) => Text('Error: $e'),
-              data: (attendance) {
-                if (attendance == null) {
-                  return Column(
+            // ── Loading overlay for GPS ──────────────────────────────
+            if (_isLoadingLocation)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
                     children: [
-                      Icon(
-                        Icons.login_rounded,
-                        size: 48,
-                        color: theme.colorScheme.onSurface.withAlpha(60),
-                      ),
-                      const SizedBox(height: 12),
+                      const CircularProgressIndicator(),
+                      const SizedBox(height: 16),
                       Text(
-                        'Anda belum absen masuk hari ini',
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color:
-                              theme.colorScheme.onSurface.withAlpha(120),
+                        'Mengambil lokasi GPS...',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(140),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      GradientButton(
-                        label: 'Check In',
-                        icon: Icons.login_rounded,
-                        onPressed: () {
-                          ref
-                              .read(todayAttendanceProvider.notifier)
-                              .checkIn();
-                        },
-                      ),
-                    ],
-                  );
-                }
-
-                if (!attendance.hasCheckedOut) {
-                  final checkInTimeStr =
-                      DateFormat('HH:mm').format(attendance.checkInTime!);
-                  return Column(
-                    children: [
-                      _infoTile(
-                        context,
-                        'Check In',
-                        checkInTimeStr,
-                        Icons.login_rounded,
-                        AppTheme.successGreen,
-                      ),
-                      const SizedBox(height: 20),
-                      GradientButton(
-                        label: 'Check Out',
-                        icon: Icons.logout_rounded,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFF97316), Color(0xFFEF4444)],
+                      const SizedBox(height: 4),
+                      Text(
+                        'Pastikan GPS aktif',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withAlpha(100),
                         ),
-                        onPressed: () {
-                          ref
-                              .read(todayAttendanceProvider.notifier)
-                              .checkOut(attendance.id);
-                        },
                       ),
                     ],
-                  );
-                }
+                  ),
+                ),
+              ),
 
-                // Complete
-                final checkInTimeStr =
-                    DateFormat('HH:mm').format(attendance.checkInTime!);
-                final checkOutTimeStr =
-                    DateFormat('HH:mm').format(attendance.checkOutTime!);
-                return Column(
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        color: AppTheme.successGreen.withAlpha(20),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.check_circle_rounded,
-                        color: AppTheme.successGreen,
-                        size: 40,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Absensi Selesai',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.successGreen,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
+            // ── Action ───────────────────────────────────────────────
+            if (!_isLoadingLocation)
+              todayAsync.when(
+                loading: () => const CircularProgressIndicator(),
+                error: (e, _) => Text('Error: $e'),
+                data: (attendance) {
+                  if (attendance == null) {
+                    return Column(
                       children: [
-                        Expanded(
-                          child: _infoTile(
-                            context,
-                            'Masuk',
-                            checkInTimeStr,
-                            Icons.login_rounded,
-                            AppTheme.successGreen,
+                        Icon(
+                          Icons.login_rounded,
+                          size: 48,
+                          color: theme.colorScheme.onSurface.withAlpha(60),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Anda belum absen masuk hari ini',
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color:
+                                theme.colorScheme.onSurface.withAlpha(120),
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _infoTile(
-                            context,
-                            'Pulang',
-                            checkOutTimeStr,
-                            Icons.logout_rounded,
-                            AppTheme.warningOrange,
+                        const SizedBox(height: 24),
+                        GradientButton(
+                          label: 'Check In',
+                          icon: Icons.login_rounded,
+                          onPressed: () => _startAttendanceFlow(
+                            isCheckIn: true,
                           ),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    _infoTile(
-                      context,
-                      'Durasi Kerja',
-                      attendance.workDurationFormatted,
-                      Icons.timer_outlined,
-                      AppTheme.accentTeal,
-                    ),
-                  ],
-                );
-              },
-            ),
+                    );
+                  }
+
+                  if (!attendance.hasCheckedOut) {
+                    final checkInTimeStr =
+                        DateFormat('HH:mm').format(attendance.checkInTime!);
+                    return Column(
+                      children: [
+                        _infoTile(
+                          context,
+                          'Check In',
+                          checkInTimeStr,
+                          Icons.login_rounded,
+                          AppTheme.successGreen,
+                        ),
+                        const SizedBox(height: 20),
+                        GradientButton(
+                          label: 'Check Out',
+                          icon: Icons.logout_rounded,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF97316), Color(0xFFEF4444)],
+                          ),
+                          onPressed: () => _startAttendanceFlow(
+                            isCheckIn: false,
+                            attendanceId: attendance.id,
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  // Complete
+                  final checkInTimeStr =
+                      DateFormat('HH:mm').format(attendance.checkInTime!);
+                  final checkOutTimeStr =
+                      DateFormat('HH:mm').format(attendance.checkOutTime!);
+                  return Column(
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          color: AppTheme.successGreen.withAlpha(20),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check_circle_rounded,
+                          color: AppTheme.successGreen,
+                          size: 40,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Absensi Selesai',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.successGreen,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _infoTile(
+                              context,
+                              'Masuk',
+                              checkInTimeStr,
+                              Icons.login_rounded,
+                              AppTheme.successGreen,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _infoTile(
+                              context,
+                              'Pulang',
+                              checkOutTimeStr,
+                              Icons.logout_rounded,
+                              AppTheme.warningOrange,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _infoTile(
+                        context,
+                        'Durasi Kerja',
+                        attendance.workDurationFormatted,
+                        Icons.timer_outlined,
+                        AppTheme.accentTeal,
+                      ),
+                    ],
+                  );
+                },
+              ),
           ],
         ),
       ),

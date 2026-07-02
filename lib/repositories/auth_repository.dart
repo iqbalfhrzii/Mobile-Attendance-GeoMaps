@@ -1,99 +1,59 @@
-import '../core/constants.dart';
-import '../core/enums.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/token_manager.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
-/// Dummy implementation of [AuthService] for development.
 class AuthRepository implements AuthService {
-  UserModel? _currentUser;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TokenManager _tokenManager = TokenManager.instance;
-
-  // Dummy credentials map: email → password
-  static final Map<String, String> _dummyPasswords = {
-    AppConstants.adminEmail: AppConstants.adminPassword,
-    AppConstants.employeeEmail: AppConstants.employeePassword,
-  };
-
-  // All dummy users (admin + employees)
-  static final List<UserModel> _allUsers = [
-    UserModel(
-      id: 'USR001',
-      employeeCode: 'ADM-001',
-      fullName: 'Ahmad Fauzi',
-      email: AppConstants.adminEmail,
-      role: UserRole.admin,
-      createdAt: DateTime(2024, 1, 1),
-    ),
-    UserModel(
-      id: 'USR002',
-      employeeCode: 'EMP-001',
-      fullName: 'Budi Santoso',
-      email: AppConstants.employeeEmail,
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 2, 15),
-    ),
-    UserModel(
-      id: 'USR003',
-      employeeCode: 'EMP-002',
-      fullName: 'Citra Dewi',
-      email: 'citra@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 3, 10),
-    ),
-    UserModel(
-      id: 'USR004',
-      employeeCode: 'EMP-003',
-      fullName: 'Dimas Prayoga',
-      email: 'dimas@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 4, 5),
-    ),
-    UserModel(
-      id: 'USR005',
-      employeeCode: 'EMP-004',
-      fullName: 'Eka Putri',
-      email: 'eka@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 5, 20),
-    ),
-    UserModel(
-      id: 'USR006',
-      employeeCode: 'EMP-005',
-      fullName: 'Farhan Maulana',
-      email: 'farhan@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 6, 1),
-    ),
-  ];
+  
+  UserModel? _currentUser;
 
   @override
   Future<UserModel?> login(String email, String password) async {
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    final storedPassword = _dummyPasswords[email];
-    if (storedPassword == null || storedPassword != password) {
-      throw Exception('Email atau password salah');
+      final firebaseUser = userCredential.user;
+      if (firebaseUser == null) {
+        throw Exception('Login gagal. Coba lagi.');
+      }
+
+      // Fetch user data from Firestore
+      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
+      if (!doc.exists) {
+        throw Exception('Data pengguna tidak ditemukan di database.');
+      }
+
+      final userData = doc.data()!;
+      _currentUser = UserModel.fromMap(userData);
+
+      // We can also refresh/get token from Firebase
+      final token = await firebaseUser.getIdToken();
+      if (token != null) {
+        _tokenManager.setTokens(
+          accessToken: token,
+          expiry: const Duration(hours: 1), // Optional depending on Firebase
+        );
+        _currentUser = _currentUser?.copyWith(token: token);
+      }
+
+      return _currentUser;
+    } on FirebaseAuthException catch (e) {
+      throw Exception('Autentikasi gagal: ${e.message}');
+    } catch (e) {
+      throw Exception('Terjadi kesalahan: $e');
     }
-
-    final dummyToken = 'token_${DateTime.now().millisecondsSinceEpoch}';
-    _tokenManager.setTokens(
-      accessToken: dummyToken,
-      expiry: const Duration(hours: 1),
-    );
-
-    final user = _allUsers.firstWhere(
-      (u) => u.email == email,
-      orElse: () => throw Exception('User tidak ditemukan'),
-    );
-
-    _currentUser = user.copyWith(token: dummyToken);
-    return _currentUser;
   }
 
   @override
   Future<void> logout() async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await _auth.signOut();
     _tokenManager.clearTokens();
     _currentUser = null;
   }
@@ -102,10 +62,15 @@ class AuthRepository implements AuthService {
   UserModel? get currentUser => _currentUser;
 
   Future<String?> refreshToken() async {
-    if (_tokenManager.isTokenValid) return _tokenManager.accessToken;
-    final newToken = 'token_${DateTime.now().millisecondsSinceEpoch}';
-    _tokenManager.setTokens(accessToken: newToken, expiry: const Duration(hours: 1));
-    _currentUser = _currentUser?.copyWith(token: newToken);
-    return newToken;
+    final user = _auth.currentUser;
+    if (user != null) {
+      final token = await user.getIdToken(true);
+      if (token != null) {
+        _tokenManager.setTokens(accessToken: token, expiry: const Duration(hours: 1));
+        _currentUser = _currentUser?.copyWith(token: token);
+        return token;
+      }
+    }
+    return null;
   }
 }

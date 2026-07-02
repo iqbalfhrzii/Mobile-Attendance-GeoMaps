@@ -1,172 +1,34 @@
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/enums.dart';
 import '../models/attendance_model.dart';
+import '../services/supabase_storage_service.dart';
 
-/// Dummy repository for attendance records.
 class AttendanceRepository {
-  final List<AttendanceModel> _records = [];
-
-  AttendanceRepository() {
-    _seedDummyData();
-  }
-
-  void _seedDummyData() {
-    final now = DateTime.now();
-
-    final dummyRecords = [
-      // ── USR001 (Admin — Ahmad Fauzi) ─────────────────────────────
-      AttendanceModel(
-        id: 'ATT001',
-        userId: 'USR001',
-        employeeName: 'Ahmad Fauzi',
-        date: DateTime(now.year, now.month, now.day - 1),
-        checkInTime: DateTime(now.year, now.month, now.day - 1, 7, 55),
-        checkOutTime: DateTime(now.year, now.month, now.day - 1, 16, 5),
-        latitude: -6.2088,
-        longitude: 106.8456,
-        distanceFromOffice: 15.3,
-        locationStatus: LocationStatus.inside,
-        attendanceStatus: AttendanceStatus.present,
-        createdAt: DateTime(now.year, now.month, now.day - 1, 7, 55),
-      ),
-      AttendanceModel(
-        id: 'ATT002',
-        userId: 'USR001',
-        employeeName: 'Ahmad Fauzi',
-        date: DateTime(now.year, now.month, now.day - 2),
-        checkInTime: DateTime(now.year, now.month, now.day - 2, 8, 20),
-        checkOutTime: DateTime(now.year, now.month, now.day - 2, 16, 10),
-        latitude: -6.2090,
-        longitude: 106.8460,
-        distanceFromOffice: 22.1,
-        locationStatus: LocationStatus.inside,
-        attendanceStatus: AttendanceStatus.late_,
-        createdAt: DateTime(now.year, now.month, now.day - 2, 8, 20),
-      ),
-
-      // ── USR002 (Employee — Budi Santoso) ─────────────────────────
-      AttendanceModel(
-        id: 'ATT003',
-        userId: 'USR002',
-        employeeName: 'Budi Santoso',
-        date: DateTime(now.year, now.month, now.day - 1),
-        checkInTime: DateTime(now.year, now.month, now.day - 1, 7, 58),
-        checkOutTime: DateTime(now.year, now.month, now.day - 1, 16, 2),
-        latitude: -6.2085,
-        longitude: 106.8452,
-        distanceFromOffice: 10.5,
-        locationStatus: LocationStatus.inside,
-        attendanceStatus: AttendanceStatus.present,
-        createdAt: DateTime(now.year, now.month, now.day - 1, 7, 58),
-      ),
-      AttendanceModel(
-        id: 'ATT004',
-        userId: 'USR002',
-        employeeName: 'Budi Santoso',
-        date: DateTime(now.year, now.month, now.day - 2),
-        checkInTime: DateTime(now.year, now.month, now.day - 2, 8, 15),
-        checkOutTime: DateTime(now.year, now.month, now.day - 2, 16, 0),
-        latitude: -6.2092,
-        longitude: 106.8458,
-        distanceFromOffice: 18.7,
-        locationStatus: LocationStatus.inside,
-        attendanceStatus: AttendanceStatus.late_,
-        createdAt: DateTime(now.year, now.month, now.day - 2, 8, 15),
-      ),
-      AttendanceModel(
-        id: 'ATT005',
-        userId: 'USR002',
-        employeeName: 'Budi Santoso',
-        date: DateTime(now.year, now.month, now.day - 3),
-        checkInTime: null,
-        checkOutTime: null,
-        latitude: null,
-        longitude: null,
-        distanceFromOffice: null,
-        locationStatus: LocationStatus.unknown,
-        attendanceStatus: AttendanceStatus.permission,
-        createdAt: DateTime(now.year, now.month, now.day - 3, 8, 0),
-      ),
-
-      // ── USR003 (Citra Dewi) ──────────────────────────────────────
-      AttendanceModel(
-        id: 'ATT006',
-        userId: 'USR003',
-        employeeName: 'Citra Dewi',
-        date: DateTime(now.year, now.month, now.day - 1),
-        checkInTime: DateTime(now.year, now.month, now.day - 1, 7, 50),
-        checkOutTime: DateTime(now.year, now.month, now.day - 1, 16, 0),
-        latitude: -6.2087,
-        longitude: 106.8455,
-        distanceFromOffice: 12.0,
-        locationStatus: LocationStatus.inside,
-        attendanceStatus: AttendanceStatus.present,
-        createdAt: DateTime(now.year, now.month, now.day - 1, 7, 50),
-      ),
-
-      // ── USR004 (Dimas Prayoga) ───────────────────────────────────
-      AttendanceModel(
-        id: 'ATT007',
-        userId: 'USR004',
-        employeeName: 'Dimas Prayoga',
-        date: DateTime(now.year, now.month, now.day - 1),
-        checkInTime: DateTime(now.year, now.month, now.day - 1, 8, 30),
-        checkOutTime: DateTime(now.year, now.month, now.day - 1, 16, 15),
-        latitude: -6.2200,
-        longitude: 106.8500,
-        distanceFromOffice: 150.0,
-        locationStatus: LocationStatus.outside,
-        attendanceStatus: AttendanceStatus.late_,
-        createdAt: DateTime(now.year, now.month, now.day - 1, 8, 30),
-      ),
-
-      // ── USR005 (Eka Putri) ───────────────────────────────────────
-      AttendanceModel(
-        id: 'ATT008',
-        userId: 'USR005',
-        employeeName: 'Eka Putri',
-        date: DateTime(now.year, now.month, now.day - 1),
-        checkInTime: null,
-        checkOutTime: null,
-        latitude: null,
-        longitude: null,
-        distanceFromOffice: null,
-        locationStatus: LocationStatus.unknown,
-        attendanceStatus: AttendanceStatus.sick,
-        createdAt: DateTime(now.year, now.month, now.day - 1, 8, 0),
-      ),
-
-      // ── USR006 (Farhan Maulana) ──────────────────────────────────
-      AttendanceModel(
-        id: 'ATT009',
-        userId: 'USR006',
-        employeeName: 'Farhan Maulana',
-        date: DateTime(now.year, now.month, now.day - 1),
-        checkInTime: DateTime(now.year, now.month, now.day - 1, 7, 45),
-        checkOutTime: DateTime(now.year, now.month, now.day - 1, 16, 0),
-        latitude: -6.2086,
-        longitude: 106.8454,
-        distanceFromOffice: 8.2,
-        locationStatus: LocationStatus.inside,
-        attendanceStatus: AttendanceStatus.present,
-        createdAt: DateTime(now.year, now.month, now.day - 1, 7, 45),
-      ),
-    ];
-
-    _records.addAll(dummyRecords);
-  }
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final SupabaseStorageService _storageService = SupabaseStorageService();
+  
+  // Using a single collection for attendances
+  CollectionReference get _collection => _firestore.collection('attendances');
 
   /// Get today's attendance for a user.
   Future<AttendanceModel?> getTodayAttendance(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
     final now = DateTime.now();
+    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
+
     try {
-      return _records.firstWhere(
-        (r) =>
-            r.userId == userId &&
-            r.date.year == now.year &&
-            r.date.month == now.month &&
-            r.date.day == now.day,
-      );
+      final snapshot = await _collection
+          .where('userId', isEqualTo: userId)
+          .where('date', isGreaterThanOrEqualTo: startOfDay)
+          .where('date', isLessThanOrEqualTo: endOfDay)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) return null;
+
+      final doc = snapshot.docs.first;
+      return AttendanceModel.fromMap(doc.data() as Map<String, dynamic>);
     } catch (_) {
       return null;
     }
@@ -183,16 +45,28 @@ class AttendanceRepository {
     AttendanceStatus attendanceStatus = AttendanceStatus.present,
     String? photoPath,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final now = DateTime.now();
+    final existing = await getTodayAttendance(userId);
+    if (existing != null) {
+      throw Exception('Anda sudah melakukan absen masuk hari ini.');
+    }
 
+    final now = DateTime.now();
+    String? publicPhotoUrl;
+
+    if (photoPath != null) {
+      final file = File(photoPath);
+      final storagePath = await _storageService.uploadAttendanceSelfie(file, userId, 'checkin');
+      publicPhotoUrl = _storageService.getPublicUrl(storagePath);
+    }
+
+    final docRef = _collection.doc();
     final record = AttendanceModel(
-      id: 'ATT${now.millisecondsSinceEpoch}',
+      id: docRef.id,
       userId: userId,
       employeeName: employeeName,
       date: DateTime(now.year, now.month, now.day),
       checkInTime: now,
-      checkInPhotoPath: photoPath,
+      checkInPhotoPath: publicPhotoUrl,
       latitude: latitude,
       longitude: longitude,
       distanceFromOffice: distanceFromOffice,
@@ -201,7 +75,7 @@ class AttendanceRepository {
       createdAt: now,
     );
 
-    _records.add(record);
+    await docRef.set(record.toMap());
     return record;
   }
 
@@ -210,29 +84,57 @@ class AttendanceRepository {
     required String attendanceId,
     String? photoPath,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final index = _records.indexWhere((r) => r.id == attendanceId);
-    if (index == -1) throw Exception('Record tidak ditemukan');
+    final docRef = _collection.doc(attendanceId);
+    final doc = await docRef.get();
 
-    final updated = _records[index].copyWith(
+    if (!doc.exists) {
+      throw Exception('Record absensi tidak ditemukan');
+    }
+
+    final currentRecord = AttendanceModel.fromMap(doc.data() as Map<String, dynamic>);
+
+    if (!currentRecord.hasCheckedIn) {
+      throw Exception('Anda belum melakukan absen masuk.');
+    }
+
+    if (currentRecord.hasCheckedOut) {
+      throw Exception('Anda sudah melakukan absen pulang hari ini.');
+    }
+
+    String? publicPhotoUrl;
+    if (photoPath != null) {
+      final file = File(photoPath);
+      final storagePath = await _storageService.uploadAttendanceSelfie(file, currentRecord.userId, 'checkout');
+      publicPhotoUrl = _storageService.getPublicUrl(storagePath);
+    }
+
+    final updated = currentRecord.copyWith(
       checkOutTime: DateTime.now(),
-      checkOutPhotoPath: photoPath,
+      checkOutPhotoPath: publicPhotoUrl ?? currentRecord.checkOutPhotoPath,
     );
-    _records[index] = updated;
+
+    await docRef.update(updated.toMap());
     return updated;
   }
 
   /// Get attendance history for a user.
   Future<List<AttendanceModel>> getHistory(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _records.where((r) => r.userId == userId).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final snapshot = await _collection
+        .where('userId', isEqualTo: userId)
+        .orderBy('date', descending: true)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => AttendanceModel.fromMap(doc.data() as Map<String, dynamic>))
+        .toList();
   }
 
   /// Get all attendance records (admin).
   Future<List<AttendanceModel>> getAll() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return List.from(_records)..sort((a, b) => b.date.compareTo(a.date));
+    final snapshot = await _collection.orderBy('date', descending: true).get();
+    return snapshot.docs
+        .map((doc) => AttendanceModel.fromMap(doc.data() as Map<String, dynamic>))
+        .toList();
   }
 
   /// Get attendance records by date range.
@@ -241,12 +143,24 @@ class AttendanceRepository {
     DateTime end, {
     String? userId,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _records.where((r) {
-      final inRange = !r.date.isBefore(start) && !r.date.isAfter(end);
-      if (userId != null) return inRange && r.userId == userId;
-      return inRange;
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final startStr = start.toIso8601String();
+    final endStr = end.toIso8601String();
+
+    Query query = _collection
+        .where('date', isGreaterThanOrEqualTo: startStr)
+        .where('date', isLessThanOrEqualTo: endStr);
+
+    if (userId != null) {
+      query = query.where('userId', isEqualTo: userId);
+    }
+
+    final snapshot = await query.get();
+    
+    final list = snapshot.docs
+        .map((doc) => AttendanceModel.fromMap(doc.data() as Map<String, dynamic>))
+        .toList();
+    
+    list.sort((a, b) => b.date.compareTo(a.date));
+    return list;
   }
 }

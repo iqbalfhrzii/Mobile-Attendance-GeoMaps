@@ -1,120 +1,102 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import '../core/enums.dart';
 import '../models/user_model.dart';
 
-/// Dummy repository for managing employee/user data.
+/// Repository for managing employee/user data in Firestore.
 class UserRepository {
-  final List<UserModel> _users = [
-    UserModel(
-      id: 'USR001',
-      employeeCode: 'ADM-001',
-      fullName: 'Ahmad Fauzi',
-      email: 'admin@demo.com',
-      role: UserRole.admin,
-      createdAt: DateTime(2024, 1, 1),
-    ),
-    UserModel(
-      id: 'USR002',
-      employeeCode: 'EMP-001',
-      fullName: 'Budi Santoso',
-      email: 'employee@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 2, 15),
-    ),
-    UserModel(
-      id: 'USR003',
-      employeeCode: 'EMP-002',
-      fullName: 'Citra Dewi',
-      email: 'citra@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 3, 10),
-    ),
-    UserModel(
-      id: 'USR004',
-      employeeCode: 'EMP-003',
-      fullName: 'Dimas Prayoga',
-      email: 'dimas@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 4, 5),
-    ),
-    UserModel(
-      id: 'USR005',
-      employeeCode: 'EMP-004',
-      fullName: 'Eka Putri',
-      email: 'eka@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 5, 20),
-    ),
-    UserModel(
-      id: 'USR006',
-      employeeCode: 'EMP-005',
-      fullName: 'Farhan Maulana',
-      email: 'farhan@demo.com',
-      role: UserRole.employee,
-      createdAt: DateTime(2024, 6, 1),
-    ),
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String _collectionPath = 'users';
 
   /// Get all users.
   Future<List<UserModel>> getAll() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return List.from(_users);
+    final snapshot = await _firestore.collection(_collectionPath).get();
+    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
   }
 
   /// Get all employees only (excluding admin).
   Future<List<UserModel>> getEmployees() async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _users.where((u) => u.role == UserRole.employee).toList();
+    final snapshot = await _firestore
+        .collection(_collectionPath)
+        .where('role', isEqualTo: UserRole.employee.name)
+        .get();
+    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
   }
 
   /// Get a user by ID.
   Future<UserModel?> getById(String id) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    try {
-      return _users.firstWhere((u) => u.id == id);
-    } catch (_) {
-      return null;
-    }
+    final doc = await _firestore.collection(_collectionPath).doc(id).get();
+    if (!doc.exists) return null;
+    return UserModel.fromMap(doc.data()!);
   }
 
   /// Get a user by employee code.
   Future<UserModel?> getByEmployeeCode(String code) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    try {
-      return _users.firstWhere((u) => u.employeeCode == code);
-    } catch (_) {
-      return null;
-    }
+    final snapshot = await _firestore
+        .collection(_collectionPath)
+        .where('employeeCode', isEqualTo: code)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+    return UserModel.fromMap(snapshot.docs.first.data());
   }
 
-  /// Add a new user.
-  Future<UserModel> add(UserModel user) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    _users.add(user);
-    return user;
+  /// Add a new user (Creates Firebase Auth account and Firestore document).
+  Future<UserModel> add(UserModel user, {required String password}) async {
+    // We use a secondary Firebase app to create the user so the current admin doesn't get logged out
+    FirebaseApp secondaryApp = await Firebase.initializeApp(
+      name: 'SecondaryApp',
+      options: Firebase.app().options,
+    );
+
+    try {
+      final userCredential = await FirebaseAuth.instanceFor(app: secondaryApp)
+          .createUserWithEmailAndPassword(
+        email: user.email,
+        password: password,
+      );
+
+      final uid = userCredential.user!.uid;
+      final newUser = user.copyWith(id: uid);
+
+      await _firestore.collection(_collectionPath).doc(uid).set(newUser.toMap());
+      
+      await secondaryApp.delete();
+      return newUser;
+    } catch (e) {
+      await secondaryApp.delete();
+      throw Exception('Gagal membuat user: $e');
+    }
   }
 
   /// Update an existing user.
   Future<UserModel> update(UserModel user) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    final index = _users.indexWhere((u) => u.id == user.id);
-    if (index == -1) throw Exception('User tidak ditemukan');
-    _users[index] = user;
+    await _firestore.collection(_collectionPath).doc(user.id).update(user.toMap());
     return user;
   }
 
   /// Delete a user by ID.
   Future<void> delete(String id) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    _users.removeWhere((u) => u.id == id);
+    // Note: This only deletes the Firestore document.
+    // Deleting the Firebase Auth user requires Admin SDK or Cloud Functions,
+    // so we'll just remove their data for now.
+    await _firestore.collection(_collectionPath).doc(id).delete();
   }
 
   /// Get total user count.
   Future<int> count() async {
-    return _users.length;
+    final snapshot = await _firestore.collection(_collectionPath).count().get();
+    return snapshot.count ?? 0;
   }
 
   /// Get employee count only.
   Future<int> employeeCount() async {
-    return _users.where((u) => u.role == UserRole.employee).length;
+    final snapshot = await _firestore
+        .collection(_collectionPath)
+        .where('role', isEqualTo: UserRole.employee.name)
+        .count()
+        .get();
+    return snapshot.count ?? 0;
   }
 }
