@@ -23,7 +23,7 @@ final todayAttendanceProvider =
 
 /// Attendance history for the current user.
 final attendanceHistoryProvider =
-    FutureProvider<List<AttendanceModel>>((ref) async {
+    FutureProvider.autoDispose<List<AttendanceModel>>((ref) async {
   final repo = ref.watch(attendanceRepositoryProvider);
   final user = ref.watch(currentUserProvider);
   if (user == null) return [];
@@ -32,14 +32,14 @@ final attendanceHistoryProvider =
 
 /// All attendances (admin only).
 final allAttendancesProvider =
-    FutureProvider<List<AttendanceModel>>((ref) async {
+    FutureProvider.autoDispose<List<AttendanceModel>>((ref) async {
   final repo = ref.watch(attendanceRepositoryProvider);
   return repo.getAll();
 });
 
 /// All attendance records for today (admin overview).
 final todayAllAttendancesProvider =
-    FutureProvider<List<AttendanceModel>>((ref) async {
+    FutureProvider.autoDispose<List<AttendanceModel>>((ref) async {
   final repo = ref.watch(attendanceRepositoryProvider);
   final all = await repo.getAll();
   final now = DateTime.now();
@@ -51,7 +51,7 @@ final todayAllAttendancesProvider =
 
 /// Computed stats for admin dashboard.
 final todayStatsProvider =
-    FutureProvider<Map<String, int>>((ref) async {
+    FutureProvider.autoDispose<Map<String, int>>((ref) async {
   final todayRecords = await ref.watch(todayAllAttendancesProvider.future);
   final userRepo = ref.watch(userRepositoryProvider);
   final employeeCount = await userRepo.employeeCount();

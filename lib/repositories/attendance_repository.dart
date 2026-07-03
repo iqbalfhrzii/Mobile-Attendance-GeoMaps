@@ -14,14 +14,12 @@ class AttendanceRepository {
   /// Get today's attendance for a user.
   Future<AttendanceModel?> getTodayAttendance(String userId) async {
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
+    final todayStr = DateTime(now.year, now.month, now.day).toIso8601String();
 
     try {
       final snapshot = await _collection
           .where('userId', isEqualTo: userId)
-          .where('date', isGreaterThanOrEqualTo: startOfDay)
-          .where('date', isLessThanOrEqualTo: endOfDay)
+          .where('date', isEqualTo: todayStr)
           .limit(1)
           .get();
 
@@ -121,20 +119,32 @@ class AttendanceRepository {
   Future<List<AttendanceModel>> getHistory(String userId) async {
     final snapshot = await _collection
         .where('userId', isEqualTo: userId)
-        .orderBy('date', descending: true)
         .get();
 
-    return snapshot.docs
+    final list = snapshot.docs
         .map((doc) => AttendanceModel.fromMap(doc.data() as Map<String, dynamic>))
         .toList();
+    
+    list.sort((a, b) => b.date.compareTo(a.date));
+    return list;
   }
 
-  /// Get all attendance records (admin).
   Future<List<AttendanceModel>> getAll() async {
     final snapshot = await _collection.orderBy('date', descending: true).get();
-    return snapshot.docs
+    final list = snapshot.docs
         .map((doc) => AttendanceModel.fromMap(doc.data() as Map<String, dynamic>))
         .toList();
+        
+    list.sort((a, b) {
+      final dateCmp = b.date.compareTo(a.date);
+      if (dateCmp != 0) return dateCmp;
+      if (a.checkInTime != null && b.checkInTime != null) {
+        return b.checkInTime!.compareTo(a.checkInTime!);
+      }
+      return 0;
+    });
+    
+    return list;
   }
 
   /// Get attendance records by date range.
@@ -146,19 +156,18 @@ class AttendanceRepository {
     final startStr = start.toIso8601String();
     final endStr = end.toIso8601String();
 
-    Query query = _collection
+    final snapshot = await _collection
         .where('date', isGreaterThanOrEqualTo: startStr)
-        .where('date', isLessThanOrEqualTo: endStr);
-
-    if (userId != null) {
-      query = query.where('userId', isEqualTo: userId);
-    }
-
-    final snapshot = await query.get();
+        .where('date', isLessThanOrEqualTo: endStr)
+        .get();
     
-    final list = snapshot.docs
+    var list = snapshot.docs
         .map((doc) => AttendanceModel.fromMap(doc.data() as Map<String, dynamic>))
         .toList();
+        
+    if (userId != null) {
+      list = list.where((a) => a.userId == userId).toList();
+    }
     
     list.sort((a, b) => b.date.compareTo(a.date));
     return list;

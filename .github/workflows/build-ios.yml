@@ -18,6 +18,14 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+      - name: Reset iOS Pods
+        run: |
+          cd ios
+          rm -f Podfile.lock
+          rm -rf Pods
+          pod deintegrate || true
+          cd ..
+
       - name: Set iOS minimum version to 15
         run: |
           if [ ! -f ios/Podfile ]; then
@@ -33,6 +41,12 @@ jobs:
           fi
 
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g' ios/Runner.xcodeproj/project.pbxproj
+
+      - name: Pod install
+        run: |
+          cd ios
+          pod install --repo-update
+          cd ..
 
       - name: Build iOS without codesign
         run: flutter build ios --release --no-codesign
