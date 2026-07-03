@@ -42,13 +42,16 @@ class UserRepository {
     return UserModel.fromMap(snapshot.docs.first.data());
   }
 
-  /// Add a new user (Creates Firebase Auth account and Firestore document).
   Future<UserModel> add(UserModel user, {required String password}) async {
-    // We use a secondary Firebase app to create the user so the current admin doesn't get logged out
-    FirebaseApp secondaryApp = await Firebase.initializeApp(
-      name: 'SecondaryApp',
-      options: Firebase.app().options,
-    );
+    FirebaseApp? secondaryApp;
+    try {
+      secondaryApp = Firebase.app('SecondaryApp');
+    } catch (e) {
+      secondaryApp = await Firebase.initializeApp(
+        name: 'SecondaryApp',
+        options: Firebase.app().options,
+      );
+    }
 
     try {
       final userCredential = await FirebaseAuth.instanceFor(app: secondaryApp)
@@ -65,7 +68,7 @@ class UserRepository {
       await secondaryApp.delete();
       return newUser;
     } catch (e) {
-      await secondaryApp.delete();
+      await secondaryApp?.delete();
       throw Exception('Gagal membuat user: $e');
     }
   }

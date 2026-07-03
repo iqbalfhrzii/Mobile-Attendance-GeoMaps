@@ -95,11 +95,7 @@ class _EmployeeManagementPageState
               }
               ref.invalidate(allUsersProvider);
             } catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(e.toString())),
-                );
-              }
+              rethrow;
             }
           },
           onDelete: existingUser == null
@@ -117,7 +113,7 @@ class _EmployeeManagementPageState
 
 class _EmployeeForm extends StatefulWidget {
   final UserModel? user;
-  final Function(UserModel, String?) onSave;
+  final Future<void> Function(UserModel, String?) onSave;
   final VoidCallback? onDelete;
 
   const _EmployeeForm({
@@ -138,6 +134,7 @@ class _EmployeeFormState extends State<_EmployeeForm> {
   late TextEditingController _codeCtrl;
   late TextEditingController _passwordCtrl;
   bool _obscurePassword = true;
+  bool _isLoading = false;
   UserRole _role = UserRole.employee;
 
   @override
@@ -237,8 +234,9 @@ class _EmployeeFormState extends State<_EmployeeForm> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
-                onPressed: () {
+                onPressed: _isLoading ? null : () async {
                   if (_formKey.currentState!.validate()) {
+                    setState(() => _isLoading = true);
                     final user = UserModel(
                       id: isEditing
                           ? widget.user!.id
@@ -251,11 +249,23 @@ class _EmployeeFormState extends State<_EmployeeForm> {
                           ? widget.user!.createdAt
                           : DateTime.now(),
                     );
-                    widget.onSave(user, isEditing ? null : _passwordCtrl.text);
-                    Navigator.pop(context);
+                    try {
+                      await widget.onSave(user, isEditing ? null : _passwordCtrl.text);
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString())),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isLoading = false);
+                    }
                   }
                 },
-                child: Text(isEditing ? 'Simpan Perubahan' : 'Tambah'),
+                child: _isLoading 
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text(isEditing ? 'Simpan Perubahan' : 'Tambah'),
               ),
             ),
             if (isEditing) ...[
