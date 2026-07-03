@@ -1,0 +1,38 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build iOS without codesign
+        run: flutter build ios --release --no-codesign
+
+      - name: Create IPA folder
+        run: mkdir -p Payload
+
+      - name: Copy Runner app
+        run: cp -r build/ios/iphoneos/Runner.app Payload/
+
+      - name: Zip IPA
+        run: zip -r AbsensiGeo.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbsensiGeo-IPA
+          path: AbsensiGeo.ipa
