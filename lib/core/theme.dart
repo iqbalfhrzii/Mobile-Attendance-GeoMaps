@@ -6,7 +6,8 @@ class AppTheme {
   AppTheme._();
 
   // ── Brand Colors ──────────────────────────────────────────────────────
-  static const Color _seedColor = Color(0xFF1A56DB); // Deep blue
+  static const Color primaryBlue = Color(0xFF1A56DB); // Deep blue
+  static const Color _seedColor = primaryBlue;
   static const Color accentTeal = Color(0xFF0EA5A0);
   static const Color accentAmber = Color(0xFFF59E0B);
   static const Color successGreen = Color(0xFF10B981);

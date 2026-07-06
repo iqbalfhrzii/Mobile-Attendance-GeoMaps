@@ -1,12 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/token_manager.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 
 class AuthRepository implements AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
   final TokenManager _tokenManager = TokenManager.instance;
   
   UserModel? _currentUser;
@@ -14,61 +13,144 @@ class AuthRepository implements AuthService {
   @override
   Future<UserModel?> login(String email, String password) async {
     try {
-      final userCredential = await _auth.signInWithEmailAndPassword(
+      final authResponse = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
-      );
+      ).timeout(const Duration(seconds: 15), onTimeout: () {
+        throw Exception('Koneksi internet lambat saat memverifikasi akun.');
+      });
 
-      final firebaseUser = userCredential.user;
-      if (firebaseUser == null) {
+      final user = authResponse.user;
+      final session = authResponse.session;
+
+      if (user == null || session == null) {
         throw Exception('Login gagal. Coba lagi.');
       }
 
-      // Fetch user data from Firestore
-      final doc = await _firestore.collection('users').doc(firebaseUser.uid).get();
-      if (!doc.exists) {
+      // Fetch user data from Supabase 'users' table
+      final data = await _supabase
+          .from('users')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle()
+          .timeout(const Duration(seconds: 15), onTimeout: () {
+            throw Exception('Koneksi lambat saat mengambil profil pengguna.');
+          });
+      
+      if (data == null) {
         throw Exception('Data pengguna tidak ditemukan di database.');
       }
 
-      final userData = doc.data()!;
-      _currentUser = UserModel.fromMap(userData);
+      _currentUser = UserModel.fromMap(data);
 
-      // We can also refresh/get token from Firebase
-      final token = await firebaseUser.getIdToken();
-      if (token != null) {
-        _tokenManager.setTokens(
-          accessToken: token,
-          expiry: const Duration(hours: 1), // Optional depending on Firebase
-        );
-        _currentUser = _currentUser?.copyWith(token: token);
-      }
+      final token = session.accessToken;
+      _tokenManager.setTokens(
+        accessToken: token,
+        expiry: const Duration(hours: 1),
+      );
+      _currentUser = _currentUser?.copyWith(token: token);
 
       return _currentUser;
-    } on FirebaseAuthException catch (e) {
+    } on AuthException catch (e) {
+      if (e.message.contains('Invalid login credentials')) {
+        throw Exception('Email atau password salah.');
+      }
       throw Exception('Autentikasi gagal: ${e.message}');
     } catch (e) {
+      if (e.toString().contains('Koneksi')) rethrow; // keep timeout messages
       throw Exception('Terjadi kesalahan: $e');
     }
   }
 
   @override
   Future<void> logout() async {
-    await _auth.signOut();
+    await _supabase.auth.signOut();
     _tokenManager.clearTokens();
     _currentUser = null;
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('Sesi tidak ditemukan. Silakan login ulang.');
+    }
+    try {
+      // In Supabase, to change password securely, you can either just update it if the user is logged in
+      // but to strictly require the current password, we can try to sign in with it first to verify.
+      await _supabase.auth.signInWithPassword(
+        email: user.email!,
+        password: currentPassword,
+      ).timeout(const Duration(seconds: 15), onTimeout: () {
+        throw Exception('Koneksi internet lambat saat memverifikasi password.');
+      });
+      
+      await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      ).timeout(const Duration(seconds: 15), onTimeout: () {
+        throw Exception('Koneksi internet lambat saat menyimpan password.');
+      });
+
+      // Update plain-text password in users table
+      await _supabase.from('users').update({'password': newPassword}).eq('id', user.id)
+          .timeout(const Duration(seconds: 15));
+
+    } on AuthException catch (e) {
+      if (e.message.contains('Invalid login credentials')) {
+        throw Exception('Password saat ini salah.');
+      }
+      throw Exception('Gagal mengganti password: ${e.message}');
+    } catch (e) {
+      if (e is TimeoutException || e.toString().contains('Timeout')) {
+        throw Exception('Koneksi internet lambat. Permintaan kehabisan waktu.');
+      }
+      throw Exception('Terjadi kesalahan: $e');
+    }
   }
 
   @override
   UserModel? get currentUser => _currentUser;
 
+  Future<UserModel?> checkAuthStatus() async {
+    final session = _supabase.auth.currentSession;
+    if (session != null && session.user != null) {
+      try {
+        final data = await _supabase
+            .from('users')
+            .select()
+            .eq('id', session.user.id)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 15));
+            
+        if (data != null) {
+          _currentUser = UserModel.fromMap(data);
+          final token = session.accessToken;
+          _tokenManager.setTokens(accessToken: token, expiry: const Duration(hours: 1));
+          _currentUser = _currentUser?.copyWith(token: token);
+          return _currentUser;
+        }
+      } catch (e) {
+        await logout();
+      }
+    }
+    return null;
+  }
+
   Future<String?> refreshToken() async {
-    final user = _auth.currentUser;
-    if (user != null) {
-      final token = await user.getIdToken(true);
-      if (token != null) {
-        _tokenManager.setTokens(accessToken: token, expiry: const Duration(hours: 1));
-        _currentUser = _currentUser?.copyWith(token: token);
-        return token;
+    final session = _supabase.auth.currentSession;
+    if (session != null) {
+      try {
+        final response = await _supabase.auth.refreshSession();
+        final newToken = response.session?.accessToken;
+        if (newToken != null) {
+          _tokenManager.setTokens(accessToken: newToken, expiry: const Duration(hours: 1));
+          _currentUser = _currentUser?.copyWith(token: newToken);
+          return newToken;
+        }
+      } catch (e) {
+        return null;
       }
     }
     return null;

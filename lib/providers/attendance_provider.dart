@@ -101,6 +101,8 @@ class TodayAttendanceNotifier
   }
 
   Future<void> checkIn({
+    required String shiftId,
+    required String shiftName,
     double? latitude,
     double? longitude,
     double? distanceFromOffice,
@@ -114,6 +116,8 @@ class TodayAttendanceNotifier
       final record = await _repo.checkIn(
         userId: _userId,
         employeeName: _userName,
+        shiftId: shiftId,
+        shiftName: shiftName,
         latitude: latitude,
         longitude: longitude,
         distanceFromOffice: distanceFromOffice,

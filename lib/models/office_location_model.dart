@@ -42,7 +42,7 @@ class OfficeLocationModel {
       'name': name,
       'latitude': latitude,
       'longitude': longitude,
-      'radiusMeter': radiusMeter,
+      'radiusmeter': radiusMeter,
     };
   }
 
@@ -52,7 +52,7 @@ class OfficeLocationModel {
       name: map['name'] as String,
       latitude: (map['latitude'] as num).toDouble(),
       longitude: (map['longitude'] as num).toDouble(),
-      radiusMeter: (map['radiusMeter'] as num).toDouble(),
+      radiusMeter: (map['radiusmeter'] as num).toDouble(),
     );
   }
 

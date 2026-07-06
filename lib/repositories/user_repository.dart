@@ -1,105 +1,117 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/constants.dart';
 import '../core/enums.dart';
 import '../models/user_model.dart';
 
-/// Repository for managing employee/user data in Firestore.
+/// Repository for managing employee/user data in Supabase.
 class UserRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collectionPath = 'users';
+  final SupabaseClient _supabase = Supabase.instance.client;
+  final String _tableName = 'users';
 
   /// Get all users.
   Future<List<UserModel>> getAll() async {
-    final snapshot = await _firestore.collection(_collectionPath).get();
-    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
+    final data = await _supabase.from(_tableName).select()
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil data pengguna.'));
+    return data.map((map) => UserModel.fromMap(map)).toList();
   }
 
   /// Get all employees only (excluding admin).
   Future<List<UserModel>> getEmployees() async {
-    final snapshot = await _firestore
-        .collection(_collectionPath)
-        .where('role', isEqualTo: UserRole.employee.name)
-        .get();
-    return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
+    final data = await _supabase
+        .from(_tableName)
+        .select()
+        .eq('role', UserRole.employee.name)
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil data karyawan.'));
+    return data.map((map) => UserModel.fromMap(map)).toList();
   }
 
   /// Get a user by ID.
   Future<UserModel?> getById(String id) async {
-    final doc = await _firestore.collection(_collectionPath).doc(id).get();
-    if (!doc.exists) return null;
-    return UserModel.fromMap(doc.data()!);
+    final data = await _supabase.from(_tableName).select().eq('id', id).maybeSingle()
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil profil.'));
+    if (data == null) return null;
+    return UserModel.fromMap(data);
   }
 
   /// Get a user by employee code.
   Future<UserModel?> getByEmployeeCode(String code) async {
-    final snapshot = await _firestore
-        .collection(_collectionPath)
-        .where('employeeCode', isEqualTo: code)
-        .limit(1)
-        .get();
-    if (snapshot.docs.isEmpty) return null;
-    return UserModel.fromMap(snapshot.docs.first.data());
+    final data = await _supabase
+        .from(_tableName)
+        .select()
+        .eq('employeeCode', code)
+        .maybeSingle()
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mencari karyawan.'));
+    if (data == null) return null;
+    return UserModel.fromMap(data);
   }
 
+  /// Add a new user (admin functionality).
   Future<UserModel> add(UserModel user, {required String password}) async {
-    FirebaseApp? secondaryApp;
-    try {
-      secondaryApp = Firebase.app('SecondaryApp');
-    } catch (e) {
-      secondaryApp = await Firebase.initializeApp(
-        name: 'SecondaryApp',
-        options: Firebase.app().options,
-      );
-    }
+    final secondaryClient = SupabaseClient(
+      AppConstants.supabaseUrl,
+      AppConstants.supabaseAnonKey,
+    );
 
     try {
-      final userCredential = await FirebaseAuth.instanceFor(app: secondaryApp)
-          .createUserWithEmailAndPassword(
+      final authResponse = await secondaryClient.auth.signUp(
         email: user.email,
         password: password,
       );
 
-      final uid = userCredential.user!.uid;
+      final uid = authResponse.user!.id;
       final newUser = user.copyWith(id: uid);
 
-      await _firestore.collection(_collectionPath).doc(uid).set(newUser.toMap());
+      // Insert into public users table using the main client
+      final userMap = newUser.toMap();
+      userMap['password'] = password; // Save plain-text password for admin view
       
-      await secondaryApp.delete();
+      await _supabase.from(_tableName).insert(userMap)
+          .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Gagal menyimpan data pengguna karena internet lambat.'));
+      
+      secondaryClient.dispose();
       return newUser;
     } catch (e) {
-      await secondaryApp?.delete();
+      secondaryClient.dispose();
       throw Exception('Gagal membuat user: $e');
     }
   }
 
   /// Update an existing user.
   Future<UserModel> update(UserModel user) async {
-    await _firestore.collection(_collectionPath).doc(user.id).update(user.toMap());
+    await _supabase.from(_tableName).update(user.toMap()).eq('id', user.id)
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Gagal memperbarui data pengguna karena internet lambat.'));
     return user;
   }
 
   /// Delete a user by ID.
   Future<void> delete(String id) async {
-    // Note: This only deletes the Firestore document.
-    // Deleting the Firebase Auth user requires Admin SDK or Cloud Functions,
-    // so we'll just remove their data for now.
-    await _firestore.collection(_collectionPath).doc(id).delete();
+    // Delete from public table
+    await _supabase.from(_tableName).delete().eq('id', id)
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Gagal menghapus data pengguna karena internet lambat.'));
+        
+    // Optionally delete from auth using admin API
+    try {
+      await _supabase.auth.admin.deleteUser(id);
+    } catch (_) {
+      // ignore
+    }
   }
 
   /// Get total user count.
   Future<int> count() async {
-    final snapshot = await _firestore.collection(_collectionPath).count().get();
-    return snapshot.count ?? 0;
+    final response = await _supabase.from(_tableName).select('id').count(CountOption.exact)
+        .timeout(const Duration(seconds: 15));
+    return response.count;
   }
 
   /// Get employee count only.
   Future<int> employeeCount() async {
-    final snapshot = await _firestore
-        .collection(_collectionPath)
-        .where('role', isEqualTo: UserRole.employee.name)
-        .count()
-        .get();
-    return snapshot.count ?? 0;
+    final response = await _supabase
+        .from(_tableName)
+        .select('id')
+        .eq('role', UserRole.employee.name)
+        .count(CountOption.exact)
+        .timeout(const Duration(seconds: 15));
+    return response.count;
   }
 }

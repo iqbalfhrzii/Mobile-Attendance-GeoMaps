@@ -62,9 +62,9 @@ class ShiftModel {
     return {
       'id': id,
       'name': name,
-      'checkInTime': checkInTime,
-      'checkOutTime': checkOutTime,
-      'lateToleranceMinutes': lateToleranceMinutes,
+      'checkintime': checkInTime,
+      'checkouttime': checkOutTime,
+      'latetoleranceminutes': lateToleranceMinutes,
     };
   }
 
@@ -72,9 +72,9 @@ class ShiftModel {
     return ShiftModel(
       id: map['id'] as String,
       name: map['name'] as String,
-      checkInTime: map['checkInTime'] as String,
-      checkOutTime: map['checkOutTime'] as String,
-      lateToleranceMinutes: map['lateToleranceMinutes'] as int,
+      checkInTime: map['checkintime'] as String,
+      checkOutTime: map['checkouttime'] as String,
+      lateToleranceMinutes: (map['latetoleranceminutes'] as num).toInt(),
     );
   }
 

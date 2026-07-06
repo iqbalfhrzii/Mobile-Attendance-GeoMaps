@@ -7,6 +7,8 @@ class AttendanceModel {
   final String id;
   final String userId;
   final String employeeName;
+  final String shiftId;
+  final String shiftName;
   final DateTime date;
   final DateTime? checkInTime;
   final DateTime? checkOutTime;
@@ -23,6 +25,8 @@ class AttendanceModel {
     required this.id,
     required this.userId,
     required this.employeeName,
+    required this.shiftId,
+    required this.shiftName,
     required this.date,
     this.checkInTime,
     this.checkOutTime,
@@ -61,7 +65,8 @@ class AttendanceModel {
     if (d == null) return '-';
     final hours = d.inHours;
     final minutes = d.inMinutes.remainder(60);
-    return '${hours}j ${minutes}m';
+    if (hours > 0) return '${hours}j ${minutes}m';
+    return '${minutes}m';
   }
 
   // ── copyWith ────────────────────────────────────────────────────────────
@@ -70,6 +75,8 @@ class AttendanceModel {
     String? id,
     String? userId,
     String? employeeName,
+    String? shiftId,
+    String? shiftName,
     DateTime? date,
     DateTime? checkInTime,
     DateTime? checkOutTime,
@@ -86,6 +93,8 @@ class AttendanceModel {
       id: id ?? this.id,
       userId: userId ?? this.userId,
       employeeName: employeeName ?? this.employeeName,
+      shiftId: shiftId ?? this.shiftId,
+      shiftName: shiftName ?? this.shiftName,
       date: date ?? this.date,
       checkInTime: checkInTime ?? this.checkInTime,
       checkOutTime: checkOutTime ?? this.checkOutTime,
@@ -105,44 +114,48 @@ class AttendanceModel {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'userId': userId,
-      'employeeName': employeeName,
+      'userid': userId,
+      'employeename': employeeName,
+      'shiftid': shiftId,
+      'shiftname': shiftName,
       'date': date.toIso8601String(),
-      'checkInTime': checkInTime?.toIso8601String(),
-      'checkOutTime': checkOutTime?.toIso8601String(),
-      'checkInPhotoPath': checkInPhotoPath,
-      'checkOutPhotoPath': checkOutPhotoPath,
+      'checkintime': checkInTime?.toIso8601String(),
+      'checkouttime': checkOutTime?.toIso8601String(),
+      'checkinphotopath': checkInPhotoPath,
+      'checkoutphotopath': checkOutPhotoPath,
       'latitude': latitude,
       'longitude': longitude,
-      'distanceFromOffice': distanceFromOffice,
-      'locationStatus': locationStatus.name,
-      'attendanceStatus': attendanceStatus.name,
-      'createdAt': createdAt.toIso8601String(),
+      'distancefromoffice': distanceFromOffice,
+      'locationstatus': locationStatus.name,
+      'attendancestatus': attendanceStatus.name,
+      'createdat': createdAt.toIso8601String(),
     };
   }
 
   factory AttendanceModel.fromMap(Map<String, dynamic> map) {
     return AttendanceModel(
       id: map['id'] as String,
-      userId: map['userId'] as String,
-      employeeName: map['employeeName'] as String,
+      userId: map['userid'] as String,
+      employeeName: map['employeename'] as String,
+      shiftId: map['shiftid'] as String? ?? 'SHF001',
+      shiftName: map['shiftname'] as String? ?? 'Shift Pagi',
       date: DateTime.parse(map['date'] as String),
-      checkInTime: map['checkInTime'] != null
-          ? DateTime.parse(map['checkInTime'] as String)
+      checkInTime: map['checkintime'] != null
+          ? DateTime.parse(map['checkintime'] as String)
           : null,
-      checkOutTime: map['checkOutTime'] != null
-          ? DateTime.parse(map['checkOutTime'] as String)
+      checkOutTime: map['checkouttime'] != null
+          ? DateTime.parse(map['checkouttime'] as String)
           : null,
-      checkInPhotoPath: map['checkInPhotoPath'] as String?,
-      checkOutPhotoPath: map['checkOutPhotoPath'] as String?,
+      checkInPhotoPath: map['checkinphotopath'] as String?,
+      checkOutPhotoPath: map['checkoutphotopath'] as String?,
       latitude: (map['latitude'] as num?)?.toDouble(),
       longitude: (map['longitude'] as num?)?.toDouble(),
-      distanceFromOffice: (map['distanceFromOffice'] as num?)?.toDouble(),
+      distanceFromOffice: (map['distancefromoffice'] as num?)?.toDouble(),
       locationStatus: LocationStatus.values
-          .firstWhere((e) => e.name == map['locationStatus']),
+          .firstWhere((e) => e.name == map['locationstatus']),
       attendanceStatus: AttendanceStatus.values
-          .firstWhere((e) => e.name == map['attendanceStatus']),
-      createdAt: DateTime.parse(map['createdAt'] as String),
+          .firstWhere((e) => e.name == map['attendancestatus']),
+      createdAt: DateTime.parse(map['createdat'] as String),
     );
   }
 

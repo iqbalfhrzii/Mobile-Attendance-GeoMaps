@@ -17,7 +17,7 @@ final tokenManagerProvider = Provider<TokenManager>((ref) {
 /// Auth state — holds the currently logged-in user (or null).
 final authStateProvider =
     StateNotifierProvider<AuthStateNotifier, AsyncValue<UserModel?>>(
-  (ref) => AuthStateNotifier(ref.watch(authRepositoryProvider)),
+  (ref) => AuthStateNotifier(ref.watch(authRepositoryProvider), ref),
 );
 
 /// Convenience provider for the current user.
@@ -41,13 +41,31 @@ final isTokenValidProvider = Provider<bool>((ref) {
   return tokenManager.isTokenValid;
 });
 
+/// Indicates whether the app is checking the initial session state.
+final initialAuthLoadingProvider = StateProvider<bool>((ref) => true);
+
 // ─── State Notifier ────────────────────────────────────────────────────────
 
 class AuthStateNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthRepository _repository;
+  final Ref _ref;
 
-  AuthStateNotifier(this._repository)
-      : super(const AsyncValue.data(null));
+  AuthStateNotifier(this._repository, this._ref)
+      : super(const AsyncValue.loading()) {
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final user = await _repository.checkAuthStatus();
+      state = AsyncValue.data(user);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    } finally {
+      // Mark initialization as complete
+      _ref.read(initialAuthLoadingProvider.notifier).state = false;
+    }
+  }
 
   Future<void> login(String email, String password) async {
     state = const AsyncValue.loading();

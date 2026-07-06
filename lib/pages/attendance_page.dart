@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../core/theme.dart';
+import '../models/shift_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/attendance_provider.dart';
 import '../providers/office_location_provider.dart';
@@ -30,6 +31,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   late Timer _clockTimer;
   DateTime _now = DateTime.now();
   bool _isLoadingLocation = false;
+  ShiftModel? _selectedShift;
 
   final LocationService _locationService = LocationService();
 
@@ -51,8 +53,23 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   Future<void> _startAttendanceFlow({
     required bool isCheckIn,
     String? attendanceId,
+    String? shiftId,
+    String? shiftName,
   }) async {
     if (_isLoadingLocation) return;
+    
+    if (isCheckIn && (shiftId == null || shiftName == null)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Silakan pilih jadwal shift terlebih dahulu.'),
+          backgroundColor: AppTheme.warningOrange,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoadingLocation = true);
 
     try {
@@ -76,6 +93,8 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
             locationResult: locationResult,
             isCheckIn: isCheckIn,
             attendanceId: attendanceId,
+            shiftId: shiftId,
+            shiftName: shiftName,
           ),
         ),
       );
@@ -131,7 +150,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final todayAsync = ref.watch(todayAttendanceProvider);
-    final shiftAsync = ref.watch(defaultShiftProvider);
+    final allShiftsAsync = ref.watch(allShiftsProvider);
     final theme = Theme.of(context);
 
     if (user == null) return const SizedBox.shrink();
@@ -203,30 +222,91 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
             ),
             const SizedBox(height: 28),
 
-            // ── Shift Info ───────────────────────────────────────────
-            shiftAsync.when(
+            // ── Shift Selection ───────────────────────────────────────
+            todayAsync.when(
               loading: () => const SizedBox.shrink(),
               error: (_, __) => const SizedBox.shrink(),
-              data: (shift) => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.work_outline_rounded,
-                          color: theme.colorScheme.primary, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${shift.name} — ${shift.displayTime}',
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
+              data: (attendance) {
+                // If user has not checked in, show shift selector
+                if (attendance == null) {
+                  return allShiftsAsync.when(
+                    loading: () => const CircularProgressIndicator(),
+                    error: (_, __) => const Text('Gagal memuat jadwal'),
+                    data: (shifts) {
+                      if (_selectedShift == null && shifts.isNotEmpty) {
+                        // Automatically select the first shift as default
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) setState(() => _selectedShift = shifts.first);
+                        });
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: theme.colorScheme.outline.withAlpha(50)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withAlpha(5),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<ShiftModel>(
+                            value: _selectedShift,
+                            isExpanded: true,
+                            icon: const Icon(Icons.expand_more_rounded),
+                            hint: const Text('Pilih Jadwal Shift'),
+                            items: shifts.map((shift) {
+                              return DropdownMenuItem<ShiftModel>(
+                                value: shift,
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.schedule_rounded, size: 18, color: theme.colorScheme.primary),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      '${shift.name} (${shift.displayTime})',
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setState(() => _selectedShift = val);
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }
+                
+                // If user has already checked in, show the shift they selected
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.work_outline_rounded,
+                            color: theme.colorScheme.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          attendance.shiftName,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
             const SizedBox(height: 24),
 

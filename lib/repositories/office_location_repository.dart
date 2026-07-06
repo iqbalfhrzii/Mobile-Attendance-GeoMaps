@@ -1,32 +1,36 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/office_location_model.dart';
 
-/// Repository for managing office locations in Firestore.
+/// Repository for managing office locations in Supabase.
 class OfficeLocationRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final String _collectionPath = 'office_locations';
+  final SupabaseClient _supabase = Supabase.instance.client;
+  final String _tableName = 'office_locations';
 
   /// Get all office locations.
   Future<List<OfficeLocationModel>> getAll() async {
-    final snapshot = await _firestore.collection(_collectionPath).get();
-    return snapshot.docs
-        .map((doc) => OfficeLocationModel.fromMap(doc.data()))
+    final data = await _supabase.from(_tableName).select()
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil lokasi kantor.'));
+    return data
+        .map((map) => OfficeLocationModel.fromMap(map))
         .toList();
   }
 
   /// Get location by ID.
   Future<OfficeLocationModel?> getById(String id) async {
-    final doc = await _firestore.collection(_collectionPath).doc(id).get();
-    if (!doc.exists) return null;
-    return OfficeLocationModel.fromMap(doc.data()!);
+    final data = await _supabase.from(_tableName).select().eq('id', id).maybeSingle()
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil lokasi kantor.'));
+    if (data == null) return null;
+    return OfficeLocationModel.fromMap(data);
   }
 
   /// Get the primary / default office location.
-  /// If there are no locations in Firestore, it creates a default one.
+  /// If there are no locations, it creates a default one.
   Future<OfficeLocationModel> getPrimary() async {
-    final snapshot = await _firestore.collection(_collectionPath).limit(1).get();
-    if (snapshot.docs.isNotEmpty) {
-      return OfficeLocationModel.fromMap(snapshot.docs.first.data());
+    final data = await _supabase.from(_tableName).select().limit(1).maybeSingle()
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil lokasi kantor utama.'));
+        
+    if (data != null) {
+      return OfficeLocationModel.fromMap(data);
     } else {
       // Create a default location if none exists
       final defaultLoc = const OfficeLocationModel(
@@ -43,24 +47,21 @@ class OfficeLocationRepository {
 
   /// Add a new office location.
   Future<OfficeLocationModel> add(OfficeLocationModel location) async {
-    await _firestore
-        .collection(_collectionPath)
-        .doc(location.id)
-        .set(location.toMap());
+    await _supabase.from(_tableName).insert(location.toMap())
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Gagal menyimpan lokasi kantor karena internet lambat.'));
     return location;
   }
 
   /// Update an existing office location.
   Future<OfficeLocationModel> update(OfficeLocationModel location) async {
-    await _firestore
-        .collection(_collectionPath)
-        .doc(location.id)
-        .update(location.toMap());
+    await _supabase.from(_tableName).update(location.toMap()).eq('id', location.id)
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Gagal memperbarui lokasi kantor karena internet lambat.'));
     return location;
   }
 
   /// Delete an office location.
   Future<void> delete(String id) async {
-    await _firestore.collection(_collectionPath).doc(id).delete();
+    await _supabase.from(_tableName).delete().eq('id', id)
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Gagal menghapus lokasi kantor karena internet lambat.'));
   }
 }

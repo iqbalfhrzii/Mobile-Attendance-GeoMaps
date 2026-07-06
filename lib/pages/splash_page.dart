@@ -66,25 +66,25 @@ class _SplashPageState extends State<SplashPage>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo icon
+                  // Logo organisasi
                   Container(
-                    width: 100,
-                    height: 100,
+                    width: 120,
+                    height: 120,
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1A56DB).withAlpha(80),
+                          color: Colors.black.withAlpha(50),
                           blurRadius: 30,
                           offset: const Offset(0, 10),
                         ),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.fingerprint_rounded,
-                      size: 52,
-                      color: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    child: Image.asset(
+                      'assets/img/splash.png',
+                      fit: BoxFit.contain,
                     ),
                   ),
                   const SizedBox(height: 28),

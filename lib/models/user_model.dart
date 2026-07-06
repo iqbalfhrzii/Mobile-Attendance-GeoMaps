@@ -58,11 +58,11 @@ class UserModel {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'employeeCode': employeeCode,
-      'fullName': fullName,
+      'employeecode': employeeCode,
+      'fullname': fullName,
       'email': email,
       'role': role.name,
-      'createdAt': createdAt.toIso8601String(),
+      'createdat': createdAt.toIso8601String(),
       'token': token,
     };
   }
@@ -70,11 +70,11 @@ class UserModel {
   factory UserModel.fromMap(Map<String, dynamic> map) {
     return UserModel(
       id: map['id'] as String,
-      employeeCode: map['employeeCode'] as String,
-      fullName: map['fullName'] as String,
+      employeeCode: map['employeecode'] as String,
+      fullName: map['fullname'] as String,
       email: map['email'] as String,
       role: UserRole.values.firstWhere((e) => e.name == map['role']),
-      createdAt: DateTime.parse(map['createdAt'] as String),
+      createdAt: DateTime.parse(map['createdat'] as String),
       token: map['token'] as String?,
     );
   }
