@@ -38,6 +38,20 @@ class ShiftModel {
     return false;
   }
 
+  /// Whether a given [DateTime] is too early to check out.
+  bool isTooEarlyToCheckout(DateTime time) {
+    if (time.hour < checkOutHour) return true;
+    if (time.hour == checkOutHour && time.minute <= checkOutMinute) return true;
+    return false;
+  }
+
+  /// String formatted for the exact minute they are allowed to check out.
+  String get allowedCheckOutTimeStr {
+    final now = DateTime.now();
+    final allowed = DateTime(now.year, now.month, now.day, checkOutHour, checkOutMinute).add(const Duration(minutes: 1));
+    return '${allowed.hour.toString().padLeft(2, '0')}:${allowed.minute.toString().padLeft(2, '0')}';
+  }
+
   // ── copyWith ────────────────────────────────────────────────────────────
 
   ShiftModel copyWith({

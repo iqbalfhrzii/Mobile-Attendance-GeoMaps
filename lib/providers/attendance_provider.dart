@@ -131,12 +131,13 @@ class TodayAttendanceNotifier
     }
   }
 
-  Future<void> checkOut(String attendanceId, {String? photoPath}) async {
+  Future<void> checkOut(String attendanceId, {String? photoPath, AttendanceStatus? attendanceStatus}) async {
     state = const AsyncValue.loading();
     try {
       final record = await _repo.checkOut(
         attendanceId: attendanceId,
         photoPath: photoPath,
+        attendanceStatus: attendanceStatus,
       );
       state = AsyncValue.data(record);
     } catch (e, st) {

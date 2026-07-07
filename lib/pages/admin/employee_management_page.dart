@@ -91,9 +91,24 @@ class _EmployeeManagementPageState
                 }
                 await repo.add(newUser, password: password);
               } else {
-                await repo.update(newUser);
+                // Run data update & password change in parallel for speed
+                await Future.wait([
+                  repo.update(newUser),
+                  if (password != null && password.isNotEmpty)
+                    repo.changeEmployeePassword(newUser, password),
+                ]);
               }
               ref.invalidate(allUsersProvider);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(existingUser == null 
+                        ? 'Karyawan berhasil ditambahkan!' 
+                        : 'Karyawan berhasil diedit!'),
+                    backgroundColor: AppTheme.successGreen,
+                  ),
+                );
+              }
             } catch (e) {
               rethrow;
             }
@@ -104,6 +119,14 @@ class _EmployeeManagementPageState
                   final repo = ref.read(userRepositoryProvider);
                   await repo.delete(existingUser.id);
                   ref.invalidate(allUsersProvider);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Karyawan berhasil dihapus!'),
+                        backgroundColor: AppTheme.successGreen,
+                      ),
+                    );
+                  }
                 },
         );
       },
@@ -114,7 +137,7 @@ class _EmployeeManagementPageState
 class _EmployeeForm extends StatefulWidget {
   final UserModel? user;
   final Future<void> Function(UserModel, String?) onSave;
-  final VoidCallback? onDelete;
+  final Future<void> Function()? onDelete;
 
   const _EmployeeForm({
     super.key,
@@ -135,6 +158,7 @@ class _EmployeeFormState extends State<_EmployeeForm> {
   late TextEditingController _passwordCtrl;
   bool _obscurePassword = true;
   bool _isLoading = false;
+  String? _errorMessage;
   UserRole _role = UserRole.employee;
 
   @override
@@ -165,12 +189,13 @@ class _EmployeeFormState extends State<_EmployeeForm> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(24, 24, 24, bottomInset + 24),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Text(
               isEditing ? 'Edit Karyawan' : 'Tambah Karyawan',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -194,28 +219,30 @@ class _EmployeeFormState extends State<_EmployeeForm> {
               decoration: const InputDecoration(labelText: 'Email'),
               validator: (v) => v!.isEmpty ? 'Tidak boleh kosong' : null,
             ),
-            if (!isEditing) ...[
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordCtrl,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                      color: Colors.grey,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _passwordCtrl,
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
+                labelText: isEditing ? 'Password Baru (Opsional)' : 'Password',
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    color: Colors.grey,
                   ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
                 ),
-                validator: (v) => v!.isEmpty ? 'Tidak boleh kosong' : null,
               ),
-            ],
+              validator: (v) {
+                if (!isEditing && (v == null || v.isEmpty)) return 'Tidak boleh kosong';
+                if (v != null && v.isNotEmpty && v.length < 6) return 'Minimal 6 karakter';
+                return null;
+              },
+            ),
             const SizedBox(height: 16),
             DropdownButtonFormField<UserRole>(
               value: _role,
@@ -230,13 +257,32 @@ class _EmployeeFormState extends State<_EmployeeForm> {
                 if (v != null) setState(() => _role = v);
               },
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 16),
+            if (_errorMessage != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.errorRed.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppTheme.errorRed.withOpacity(0.5)),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: AppTheme.errorRed, fontSize: 13),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: _isLoading ? null : () async {
                   if (_formKey.currentState!.validate()) {
-                    setState(() => _isLoading = true);
+                    setState(() {
+                      _isLoading = true;
+                      _errorMessage = null;
+                    });
                     final user = UserModel(
                       id: isEditing
                           ? widget.user!.id
@@ -250,13 +296,14 @@ class _EmployeeFormState extends State<_EmployeeForm> {
                           : DateTime.now(),
                     );
                     try {
-                      await widget.onSave(user, isEditing ? null : _passwordCtrl.text);
+                      final pass = _passwordCtrl.text.isNotEmpty ? _passwordCtrl.text : null;
+                      await widget.onSave(user, pass);
                       if (context.mounted) Navigator.pop(context);
                     } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(e.toString())),
-                        );
+                      if (mounted) {
+                        setState(() {
+                          _errorMessage = e.toString().replaceAll('Exception: ', '');
+                        });
                       }
                     } finally {
                       if (mounted) setState(() => _isLoading = false);
@@ -274,16 +321,51 @@ class _EmployeeFormState extends State<_EmployeeForm> {
                 width: double.infinity,
                 child: TextButton(
                   style: TextButton.styleFrom(foregroundColor: AppTheme.errorRed),
-                  onPressed: () {
-                    widget.onDelete?.call();
-                    Navigator.pop(context);
+                  onPressed: () async {
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Hapus Karyawan'),
+                        content: const Text('Apakah Anda yakin ingin menghapus data karyawan ini? Tindakan ini tidak dapat dibatalkan.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Batal'),
+                          ),
+                          TextButton(
+                            style: TextButton.styleFrom(foregroundColor: AppTheme.errorRed),
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Hapus'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirm == true) {
+                      setState(() => _isLoading = true);
+                      try {
+                        await widget.onDelete?.call();
+                        if (context.mounted) Navigator.pop(context);
+                      } catch (e) {
+                        if (mounted) {
+                          setState(() {
+                            _errorMessage = e.toString().replaceAll('Exception: ', '');
+                          });
+                        }
+                      } finally {
+                        if (mounted) setState(() => _isLoading = false);
+                      }
+                    }
                   },
-                  child: const Text('Hapus Karyawan'),
+                  child: _isLoading 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.errorRed))
+                      : const Text('Hapus Karyawan'),
                 ),
               ),
             ]
           ],
         ),
+      ),
       ),
     );
   }

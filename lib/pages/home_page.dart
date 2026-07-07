@@ -55,7 +55,32 @@ class _EmployeeDashboard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Greeting ─────────────────────────────────────────
+              // ── Branding Header ──────────────────────────────────
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/img/logoMahligai.png',
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Mahligai Beach Resort',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // ── Greeting Card ────────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -73,21 +98,22 @@ class _EmployeeDashboard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // USER GREETING
                     Row(
                       children: [
                         CircleAvatar(
-                          radius: 24,
+                          radius: 20,
                           backgroundColor: Colors.white.withAlpha(30),
                           child: Text(
                             user.initials,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
-                              fontSize: 16,
+                              fontSize: 14,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,7 +122,7 @@ class _EmployeeDashboard extends ConsumerWidget {
                                 'Halo, ${user.fullName.split(' ').first}! 👋',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 20,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -105,21 +131,17 @@ class _EmployeeDashboard extends ConsumerWidget {
                                 '${user.role.label} • ${user.employeeCode}',
                                 style: TextStyle(
                                   color: Colors.white.withAlpha(180),
-                                  fontSize: 13,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        Image.asset(
-                          'assets/img/logoMahligai.png',
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.contain,
-                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
+                    
+                    // DATE BADGE
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
@@ -150,50 +172,81 @@ class _EmployeeDashboard extends ConsumerWidget {
               const SizedBox(height: 20),
 
               // ── Shift Info ──────────────────────────────────────
-              shiftAsync.when(
+              ref.watch(allShiftsProvider).when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (shift) => Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
+                data: (shifts) {
+                  final selectedShiftId = ref.watch(selectedShiftIdProvider);
+                  
+                  if (selectedShiftId == null && shifts.isNotEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (context.mounted)
+                        ref.read(selectedShiftIdProvider.notifier).state = shifts.first.id;
+                    });
+                  }
+
+                  final selectedShift = shifts.where((s) => s.id == selectedShiftId).firstOrNull ?? shifts.firstOrNull;
+
+                  if (selectedShift == null) return const SizedBox.shrink();
+
+                  return Card(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(Icons.schedule_rounded,
+                                color: theme.colorScheme.primary, size: 22),
                           ),
-                          child: Icon(Icons.schedule_rounded,
-                              color: theme.colorScheme.primary, size: 22),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Shift Hari Ini',
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: theme.colorScheme.onSurface
-                                      .withAlpha(140),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Pilih Shift Hari Ini',
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withAlpha(140),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${shift.name} — ${shift.displayTime}',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
+                                DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: selectedShift.id,
+                                    isExpanded: true,
+                                    icon: const Icon(Icons.expand_more_rounded),
+                                    items: shifts.map((shift) {
+                                      return DropdownMenuItem<String>(
+                                        value: shift.id,
+                                        child: Text(
+                                          '${shift.name} — ${shift.displayTime}',
+                                          style: theme.textTheme.titleMedium?.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        ref.read(selectedShiftIdProvider.notifier).state = val;
+                                      }
+                                    },
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 20),
 
@@ -515,6 +568,8 @@ class _EmployeeDashboard extends ConsumerWidget {
         return AppTheme.accentTeal;
       case AttendanceStatus.sick:
         return AppTheme.accentAmber;
+      case AttendanceStatus.earlyLeave:
+        return AppTheme.warningOrange;
     }
   }
 }
@@ -548,7 +603,32 @@ class _AdminDashboard extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Greeting Header ────────────────────────────────
+              // ── Branding Header ──────────────────────────────────
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/img/logoMahligai.png',
+                    width: 60,
+                    height: 60,
+                    fit: BoxFit.contain,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Mahligai Beach Resort',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // ── Greeting Header ──────────────────────────────────
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(24),
@@ -570,22 +650,23 @@ class _AdminDashboard extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ADMIN GREETING
                     Row(
                       children: [
                         Container(
-                          width: 48,
-                          height: 48,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             gradient: AppTheme.primaryGradient,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: const Icon(
                             Icons.admin_panel_settings_rounded,
                             color: Colors.white,
-                            size: 24,
+                            size: 20,
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -594,7 +675,7 @@ class _AdminDashboard extends ConsumerWidget {
                                 'Halo, ${user.fullName.split(' ').first}! 🛡️',
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 20,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -603,8 +684,7 @@ class _AdminDashboard extends ConsumerWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4444)
-                                      .withAlpha(30),
+                                  color: const Color(0xFFEF4444).withAlpha(30),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: const Text(
@@ -619,12 +699,6 @@ class _AdminDashboard extends ConsumerWidget {
                               ),
                             ],
                           ),
-                        ),
-                        Image.asset(
-                          'assets/img/logoMahligai.png',
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.contain,
                         ),
                       ],
                     ),

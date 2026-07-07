@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
-import '../providers/shift_provider.dart';
 
 /// Profile page showing user info and logout.
 class ProfilePage extends ConsumerWidget {
@@ -13,18 +12,22 @@ class ProfilePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final shiftAsync = ref.watch(defaultShiftProvider);
     final theme = Theme.of(context);
 
     if (user == null) return const SizedBox.shrink();
 
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-        child: Column(
-          children: [
-            // ── Avatar + Name ─────────────────────────────────────
-            const SizedBox(height: 12),
+      child: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(authStateProvider.notifier).refreshUser();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            children: [
+              // ── Avatar + Name ─────────────────────────────────────
+              const SizedBox(height: 12),
             Container(
               width: 88,
               height: 88,
@@ -80,20 +83,9 @@ class ProfilePage extends ConsumerWidget {
             _infoTile(context, 'ID Karyawan', user.employeeCode,
                 Icons.badge_outlined),
             _infoTile(context, 'Email', user.email, Icons.email_outlined),
-            // Shift info
-            shiftAsync.when(
-              loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
-              data: (shift) => _infoTile(
-                context,
-                'Jam Kerja',
-                '${shift.name} (${shift.displayTime})',
-                Icons.schedule_outlined,
-              ),
-            ),
             const SizedBox(height: 32),
 
-            // ── Change Password ──────────────────────────────────────
+            // ── Actions ──────────────────────────────────────────────
             SizedBox(
               width: double.infinity,
               child: FilledButton.tonalIcon(
@@ -159,6 +151,7 @@ class ProfilePage extends ConsumerWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/enums.dart';
+import '../core/theme.dart';
 import '../providers/auth_provider.dart';
+import '../services/location_service.dart';
 
 /// Main layout with role-based bottom navigation.
 class MainLayout extends ConsumerStatefulWidget {
@@ -16,6 +18,47 @@ class MainLayout extends ConsumerStatefulWidget {
 }
 
 class _MainLayoutState extends ConsumerState<MainLayout> {
+  final LocationService _locationService = LocationService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Check permission immediately when entering the main app
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkLocationOnStartup();
+    });
+  }
+
+  Future<void> _checkLocationOnStartup() async {
+    try {
+      await _locationService.checkPermission();
+    } catch (e) {
+      if (!mounted) return;
+      final errorMsg = e.toString().replaceAll('Exception: ', '');
+      
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AppTheme.warningOrange),
+              SizedBox(width: 8),
+              Text('Izin Lokasi'),
+            ],
+          ),
+          content: Text(errorMsg),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tutup'),
+            ),
+          ],
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+      );
+    }
+  }
+
   int _calculateIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     final user = ref.read(currentUserProvider);

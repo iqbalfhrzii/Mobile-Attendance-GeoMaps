@@ -35,4 +35,16 @@ class SupabaseStorageService {
         .from(AppConstants.supabaseBucketName)
         .getPublicUrl(path);
   }
+
+  /// Deletes multiple files from Supabase Storage.
+  Future<void> deleteFiles(List<String> paths) async {
+    if (paths.isEmpty) return;
+    try {
+      await _supabase.storage
+          .from(AppConstants.supabaseBucketName)
+          .remove(paths);
+    } catch (e) {
+      throw Exception('Failed to delete files from storage: $e');
+    }
+  }
 }

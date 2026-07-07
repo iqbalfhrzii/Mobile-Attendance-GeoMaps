@@ -94,4 +94,19 @@ class AuthStateNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       state = AsyncValue.error(e, st);
     }
   }
+
+  /// Manually update the current user state.
+  void updateUser(UserModel user) {
+    state = AsyncValue.data(user);
+  }
+
+  /// Refresh user data from database
+  Future<void> refreshUser() async {
+    try {
+      final user = await _repository.checkAuthStatus();
+      state = AsyncValue.data(user);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
 }

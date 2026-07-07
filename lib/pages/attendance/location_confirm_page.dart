@@ -9,12 +9,18 @@ class LocationConfirmPage extends StatelessWidget {
   final LocationResult locationResult;
   final bool isCheckIn;
   final String? attendanceId; // needed for check-out
+  final String? shiftId;
+  final String? shiftName;
+  final bool isEarlyLeave;
 
   const LocationConfirmPage({
     super.key,
     required this.locationResult,
     required this.isCheckIn,
     this.attendanceId,
+    this.shiftId,
+    this.shiftName,
+    this.isEarlyLeave = false,
   });
 
   @override
@@ -160,6 +166,9 @@ class LocationConfirmPage extends StatelessWidget {
                         locationResult: locationResult,
                         isCheckIn: isCheckIn,
                         attendanceId: attendanceId,
+                        shiftId: shiftId,
+                        shiftName: shiftName,
+                        isEarlyLeave: isEarlyLeave,
                       ),
                     ),
                   );

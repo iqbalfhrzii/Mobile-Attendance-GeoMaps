@@ -40,61 +40,90 @@ class HistoryPage extends ConsumerWidget {
 
           // List
           Expanded(
-            child: historyAsync.when(
-              loading: () =>
-                  const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.error_outline_rounded,
-                        size: 48,
-                        color: theme.colorScheme.error),
-                    const SizedBox(height: 12),
-                    Text('Gagal memuat riwayat: $e'),
-                  ],
-                ),
-              ),
-              data: (records) {
-                return RefreshIndicator(
-                  onRefresh: () => ref.refresh(attendanceHistoryProvider.future),
-                  child: records.isEmpty
-                      ? LayoutBuilder(
-                          builder: (context, constraints) => SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                              child: Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.history_rounded,
-                                        size: 64,
-                                        color: theme.colorScheme.onSurface.withAlpha(60)),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      'Belum ada riwayat absensi',
-                                      style: theme.textTheme.bodyLarge?.copyWith(
-                                        color: theme.colorScheme.onSurface.withAlpha(100),
-                                      ),
-                                    ),
-                                  ],
+              child: RefreshIndicator(
+                onRefresh: () => ref.refresh(attendanceHistoryProvider.future),
+                child: historyAsync.when(
+                  loading: () => ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                    ],
+                  ),
+                  error: (e, _) => ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.error_outline_rounded,
+                                  size: 48,
+                                  color: theme.colorScheme.error),
+                              const SizedBox(height: 12),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                child: Text(
+                                  'Gagal memuat riwayat: $e',
+                                  textAlign: TextAlign.center,
                                 ),
+                              ),
+                              const SizedBox(height: 16),
+                              FilledButton.icon(
+                                onPressed: () => ref.refresh(attendanceHistoryProvider.future),
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Coba Lagi'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  data: (records) {
+                    if (records.isEmpty) {
+                      return LayoutBuilder(
+                        builder: (context, constraints) => SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                            child: Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.history_rounded,
+                                      size: 64,
+                                      color: theme.colorScheme.onSurface.withAlpha(60)),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Belum ada riwayat absensi',
+                                    style: theme.textTheme.bodyLarge?.copyWith(
+                                      color: theme.colorScheme.onSurface.withAlpha(100),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        )
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          itemCount: records.length,
-                          itemBuilder: (context, index) {
-                            return AttendanceCard(attendance: records[index]);
-                          },
                         ),
-                );
-              },
-            ),
+                      );
+                    }
+                    
+                    return ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: records.length,
+                      itemBuilder: (context, index) {
+                        return AttendanceCard(attendance: records[index]);
+                      },
+                    );
+                  },
+                ),
+              ),
           ),
         ],
       ),

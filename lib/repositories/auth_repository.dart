@@ -16,7 +16,7 @@ class AuthRepository implements AuthService {
       final authResponse = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
-      ).timeout(const Duration(seconds: 15), onTimeout: () {
+      ).timeout(const Duration(seconds: 30), onTimeout: () {
         throw Exception('Koneksi internet lambat saat memverifikasi akun.');
       });
 

@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/enums.dart';
 import '../../core/theme.dart';
 import '../../providers/attendance_provider.dart';
+import '../../providers/user_provider.dart';
+import '../../services/export_service.dart';
 
 class MonthlyReportPage extends ConsumerStatefulWidget {
   const MonthlyReportPage({super.key});
@@ -25,6 +27,7 @@ class _MonthlyReportPageState extends ConsumerState<MonthlyReportPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final attendancesAsync = ref.watch(allAttendancesProvider);
+    final employeesAsync = ref.watch(employeesProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -48,10 +51,6 @@ class _MonthlyReportPageState extends ConsumerState<MonthlyReportPage> {
             if (att.locationStatus == LocationStatus.outside) totalLuarRadius++;
           }
 
-          // Very naive percentage calculation (assuming 22 working days x number of employees)
-          // In a real app, this requires knowing active employees and working days.
-          // For dummy display, we'll just show it out of 100% or calculate based on dummy logic.
-          // Let's just mock a percentage for demonstration if data exists.
           final percentage = monthData.isNotEmpty ? 92.5 : 0.0;
 
           return ListView(
@@ -124,22 +123,143 @@ class _MonthlyReportPageState extends ConsumerState<MonthlyReportPage> {
               ),
               const SizedBox(height: 32),
 
+              // Export Button
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Mengekspor laporan... (Coming Soon)')),
-                    );
+                  onPressed: () async {
+                    if (monthData.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Tidak ada data absensi untuk diexport.')),
+                      );
+                      return;
+                    }
+                    final allEmployees = employeesAsync.value;
+                    if (allEmployees == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Data karyawan belum siap, coba lagi nanti.')),
+                      );
+                      return;
+                    }
+                    try {
+                      await ExportService.exportAttendancesToExcel(monthData, allEmployees);
+                      
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('File Excel berhasil disimpan.'),
+                            backgroundColor: AppTheme.successGreen,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+                        );
+                      }
+                    }
                   },
                   icon: const Icon(Icons.download_rounded),
                   label: const Text('Export Laporan'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Delete Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                    side: BorderSide(color: theme.colorScheme.error.withAlpha(100)),
+                  ),
+                  onPressed: monthData.isEmpty ? null : () => _showDeleteConfirmation(context),
+                  icon: const Icon(Icons.delete_forever_rounded),
+                  label: Text('Hapus Riwayat Bulan ${_months[_selectedMonth - 1]}'),
                 ),
               ),
             ],
           );
         },
       ),
+    );
+  }
+
+  void _showDeleteConfirmation(BuildContext context) {
+    bool isDeleting = false;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed),
+                  SizedBox(width: 8),
+                  Text('Hapus Permanen?'),
+                ],
+              ),
+              content: isDeleting 
+                  ? const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text('Menghapus foto dan data absensi...'),
+                      ],
+                    )
+                  : Text(
+                      'Tindakan ini akan MENGHAPUS SEMUA DATA absensi dan foto pada bulan ${_months[_selectedMonth - 1]} $_selectedYear. '
+                      'Data yang sudah dihapus tidak dapat dipulihkan.\n\nPastikan Anda sudah meng-export laporan terlebih dahulu.',
+                    ),
+              actions: isDeleting
+                  ? []
+                  : [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Batal'),
+                      ),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppTheme.errorRed,
+                        ),
+                        onPressed: () async {
+                          setState(() => isDeleting = true);
+                          try {
+                            final repo = ref.read(attendanceRepositoryProvider);
+                            await repo.deleteAttendancesByMonth(_selectedYear, _selectedMonth);
+                            if (mounted) {
+                              ref.invalidate(allAttendancesProvider);
+                              Navigator.pop(dialogContext);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Berhasil menghapus riwayat absensi.'),
+                                  backgroundColor: AppTheme.successGreen,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              setState(() => isDeleting = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Gagal menghapus: $e'),
+                                  backgroundColor: AppTheme.errorRed,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: const Text('Ya, Hapus Permanen'),
+                      ),
+                    ],
+            );
+          },
+        );
+      },
     );
   }
 

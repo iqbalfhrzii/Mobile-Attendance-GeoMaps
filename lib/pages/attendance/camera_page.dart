@@ -11,12 +11,18 @@ class CameraPage extends StatefulWidget {
   final LocationResult locationResult;
   final bool isCheckIn;
   final String? attendanceId;
+  final String? shiftId;
+  final String? shiftName;
+  final bool isEarlyLeave;
 
   const CameraPage({
     super.key,
     required this.locationResult,
     required this.isCheckIn,
     this.attendanceId,
+    this.shiftId,
+    this.shiftName,
+    this.isEarlyLeave = false,
   });
 
   @override
@@ -89,6 +95,9 @@ class _CameraPageState extends State<CameraPage> with WidgetsBindingObserver {
             locationResult: widget.locationResult,
             isCheckIn: widget.isCheckIn,
             attendanceId: widget.attendanceId,
+            shiftId: widget.shiftId,
+            shiftName: widget.shiftName,
+            isEarlyLeave: widget.isEarlyLeave,
           ),
         ),
       );

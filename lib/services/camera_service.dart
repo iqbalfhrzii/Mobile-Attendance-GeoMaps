@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:camera/camera.dart';
 import 'package:path_provider/path_provider.dart';
@@ -36,7 +37,7 @@ class CameraService {
     return _controller!;
   }
 
-  /// Take a photo and save to app directory.
+  /// Take a photo, compress it, and save to app directory.
   /// Returns the saved file path.
   Future<String> takePhoto() async {
     if (_controller == null || !_controller!.value.isInitialized) {
@@ -54,9 +55,21 @@ class CameraService {
 
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final savedPath = '${photoDir.path}/selfie_$timestamp.jpg';
-    final savedFile = await File(xFile.path).copy(savedPath);
 
-    return savedFile.path;
+    // Compress: resize to max 640px wide
+    final originalBytes = await File(xFile.path).readAsBytes();
+    final codec = await ui.instantiateImageCodec(
+      originalBytes,
+      targetWidth: 640,
+    );
+    final frame = await codec.getNextFrame();
+    final resized = frame.image;
+    final byteData = await resized.toByteData(format: ui.ImageByteFormat.png);
+    resized.dispose();
+
+    await File(savedPath).writeAsBytes(byteData!.buffer.asUint8List());
+
+    return savedPath;
   }
 
   /// Dispose the camera controller.

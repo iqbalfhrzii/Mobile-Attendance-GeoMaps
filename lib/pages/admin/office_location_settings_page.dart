@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../providers/office_location_provider.dart';
+import 'package:geolocator/geolocator.dart';
 
 class OfficeLocationSettingsPage extends ConsumerStatefulWidget {
   const OfficeLocationSettingsPage({super.key});
@@ -44,6 +45,73 @@ class _OfficeLocationSettingsPageState
       _latCtrl.text = office.latitude.toString();
       _lngCtrl.text = office.longitude.toString();
       _radiusCtrl.text = office.radiusMeter.toString();
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Layanan lokasi tidak aktif')),
+        );
+      }
+      return;
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Izin lokasi ditolak')),
+          );
+        }
+        return;
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Izin lokasi ditolak permanen, aktifkan dari pengaturan')),
+        );
+      }
+      return;
+    } 
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mengambil lokasi saat ini...')),
+      );
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      setState(() {
+        _latCtrl.text = position.latitude.toString();
+        _lngCtrl.text = position.longitude.toString();
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lokasi berhasil diperbarui!'),
+            backgroundColor: AppTheme.successGreen,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal mengambil lokasi: $e')),
+        );
+      }
     }
   }
 
@@ -114,6 +182,19 @@ class _OfficeLocationSettingsPageState
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: _getCurrentLocation,
+                      icon: const Icon(Icons.my_location_rounded, size: 18),
+                      label: const Text('Pakai Lokasi Saat Ini'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: theme.colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   TextFormField(

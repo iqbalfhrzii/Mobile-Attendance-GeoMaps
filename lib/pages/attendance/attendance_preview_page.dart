@@ -17,6 +17,9 @@ class AttendancePreviewPage extends ConsumerStatefulWidget {
   final LocationResult locationResult;
   final bool isCheckIn;
   final String? attendanceId;
+  final String? shiftId;
+  final String? shiftName;
+  final bool isEarlyLeave;
 
   const AttendancePreviewPage({
     super.key,
@@ -24,6 +27,9 @@ class AttendancePreviewPage extends ConsumerStatefulWidget {
     required this.locationResult,
     required this.isCheckIn,
     this.attendanceId,
+    this.shiftId,
+    this.shiftName,
+    this.isEarlyLeave = false,
   });
 
   @override
@@ -44,11 +50,14 @@ class _AttendancePreviewPageState extends ConsumerState<AttendancePreviewPage> {
 
       if (widget.isCheckIn) {
         // Cek status keterlambatan
-        final shift = await ref.read(defaultShiftProvider.future);
+        final shifts = await ref.read(allShiftsProvider.future);
+        final shift = shifts.firstWhere((s) => s.id == widget.shiftId, orElse: () => shifts.first);
         final isLate = shift.isLate(DateTime.now());
         final status = isLate ? AttendanceStatus.late_ : AttendanceStatus.present;
 
         await notifier.checkIn(
+          shiftId: widget.shiftId!,
+          shiftName: widget.shiftName!,
           latitude: loc.latitude,
           longitude: loc.longitude,
           distanceFromOffice: loc.distanceFromOffice,
@@ -62,6 +71,7 @@ class _AttendancePreviewPageState extends ConsumerState<AttendancePreviewPage> {
         await notifier.checkOut(
           widget.attendanceId!,
           photoPath: widget.photoPath,
+          attendanceStatus: widget.isEarlyLeave ? AttendanceStatus.earlyLeave : null,
         );
       }
 
@@ -155,6 +165,15 @@ class _AttendancePreviewPageState extends ConsumerState<AttendancePreviewPage> {
                       user?.fullName ?? '-',
                       Icons.person_outline_rounded,
                     ),
+                    if (widget.isCheckIn && widget.shiftName != null) ...[
+                      const Divider(height: 20),
+                      _infoRow(
+                        context,
+                        'Jadwal Shift',
+                        widget.shiftName!,
+                        Icons.schedule_rounded,
+                      ),
+                    ],
                     const Divider(height: 20),
                     _infoRow(
                       context,

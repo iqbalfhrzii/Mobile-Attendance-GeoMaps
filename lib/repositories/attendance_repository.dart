@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/enums.dart';
 import '../models/attendance_model.dart';
 import '../services/supabase_storage_service.dart';
+import '../core/constants.dart';
 
 class AttendanceRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -19,7 +20,7 @@ class AttendanceRepository {
       final data = await _supabase
           .from(_tableName)
           .select()
-          .eq('userId', userId)
+          .eq('userid', userId)
           .eq('date', todayStr)
           .limit(1)
           .maybeSingle()
@@ -57,7 +58,7 @@ class AttendanceRepository {
       final file = File(photoPath);
       final storagePath = await _storageService
           .uploadAttendanceSelfie(file, userId, 'checkin')
-          .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Upload foto absen terlalu lama. Periksa koneksi internet Anda.'));
+          .timeout(const Duration(seconds: 60), onTimeout: () => throw Exception('Upload foto absen terlalu lama. Periksa koneksi internet Anda.'));
       publicPhotoUrl = _storageService.getPublicUrl(storagePath);
     }
 
@@ -92,6 +93,7 @@ class AttendanceRepository {
   Future<AttendanceModel> checkOut({
     required String attendanceId,
     String? photoPath,
+    AttendanceStatus? attendanceStatus,
   }) async {
     final data = await _supabase.from(_tableName).select().eq('id', attendanceId).maybeSingle()
         .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil data absensi.'));
@@ -115,13 +117,14 @@ class AttendanceRepository {
       final file = File(photoPath);
       final storagePath = await _storageService
           .uploadAttendanceSelfie(file, currentRecord.userId, 'checkout')
-          .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Upload foto absen terlalu lama. Periksa koneksi internet Anda.'));
+          .timeout(const Duration(seconds: 60), onTimeout: () => throw Exception('Upload foto absen terlalu lama. Periksa koneksi internet Anda.'));
       publicPhotoUrl = _storageService.getPublicUrl(storagePath);
     }
 
     final updated = currentRecord.copyWith(
       checkOutTime: DateTime.now(),
       checkOutPhotoPath: publicPhotoUrl ?? currentRecord.checkOutPhotoPath,
+      attendanceStatus: attendanceStatus ?? currentRecord.attendanceStatus,
     );
 
     await _supabase.from(_tableName).update(updated.toMap()).eq('id', attendanceId)
@@ -135,7 +138,7 @@ class AttendanceRepository {
     final data = await _supabase
         .from(_tableName)
         .select()
-        .eq('userId', userId)
+        .eq('userid', userId)
         .order('date', ascending: false)
         .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil riwayat.'));
 
@@ -146,7 +149,7 @@ class AttendanceRepository {
     final data = await _supabase.from(_tableName)
         .select()
         .order('date', ascending: false)
-        .order('checkInTime', ascending: false)
+        .order('checkintime', ascending: false)
         .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil semua riwayat.'));
         
     return data.map((map) => AttendanceModel.fromMap(map)).toList();
@@ -168,12 +171,59 @@ class AttendanceRepository {
         .lte('date', endStr);
         
     if (userId != null) {
-      query = query.eq('userId', userId);
+      query = query.eq('userid', userId);
     }
     
     final data = await query.order('date', ascending: false)
         .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil laporan bulanan.'));
     
     return data.map((map) => AttendanceModel.fromMap(map)).toList();
+  }
+
+  /// Delete all attendances for a specific month and year, including their photos.
+  Future<void> deleteAttendancesByMonth(int year, int month) async {
+    // 1. Get the start and end of the month
+    final start = DateTime(year, month, 1);
+    final end = DateTime(year, month + 1, 0, 23, 59, 59);
+
+    // 2. Fetch all records in that month
+    final records = await getByDateRange(start, end);
+    if (records.isEmpty) return;
+
+    // 3. Extract storage paths from public URLs
+    List<String> storagePaths = [];
+    final bucketStr = '/${AppConstants.supabaseBucketName}/';
+
+    for (var att in records) {
+      if (att.checkInPhotoPath != null) {
+        final idx = att.checkInPhotoPath!.indexOf(bucketStr);
+        if (idx != -1) {
+          final path = Uri.decodeComponent(att.checkInPhotoPath!.substring(idx + bucketStr.length));
+          storagePaths.add(path);
+        }
+      }
+      if (att.checkOutPhotoPath != null) {
+        final idx = att.checkOutPhotoPath!.indexOf(bucketStr);
+        if (idx != -1) {
+          final path = Uri.decodeComponent(att.checkOutPhotoPath!.substring(idx + bucketStr.length));
+          storagePaths.add(path);
+        }
+      }
+    }
+
+    // 4. Delete photos from Storage
+    if (storagePaths.isNotEmpty) {
+      await _storageService.deleteFiles(storagePaths);
+    }
+
+    // 5. Delete records from database
+    final startStr = start.toIso8601String();
+    final endStr = end.toIso8601String();
+    await _supabase
+        .from(_tableName)
+        .delete()
+        .gte('date', startStr)
+        .lte('date', endStr)
+        .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat menghapus riwayat.'));
   }
 }

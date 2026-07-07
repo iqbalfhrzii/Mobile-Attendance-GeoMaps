@@ -38,7 +38,7 @@ class UserRepository {
     final data = await _supabase
         .from(_tableName)
         .select()
-        .eq('employeeCode', code)
+        .eq('employeecode', code)
         .maybeSingle()
         .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mencari karyawan.'));
     if (data == null) return null;
@@ -47,9 +47,22 @@ class UserRepository {
 
   /// Add a new user (admin functionality).
   Future<UserModel> add(UserModel user, {required String password}) async {
+    // Validate uniqueness before proceeding
+    final existingEmail = await _supabase.from(_tableName).select('id').eq('email', user.email).maybeSingle();
+    if (existingEmail != null) {
+      throw Exception('Email sudah digunakan oleh karyawan lain.');
+    }
+    final existingCode = await _supabase.from(_tableName).select('id').eq('employeecode', user.employeeCode).maybeSingle();
+    if (existingCode != null) {
+      throw Exception('Kode karyawan sudah digunakan.');
+    }
+
     final secondaryClient = SupabaseClient(
       AppConstants.supabaseUrl,
       AppConstants.supabaseAnonKey,
+      authOptions: const AuthClientOptions(
+        authFlowType: AuthFlowType.implicit, // Disable PKCE for secondary client to avoid asyncStorage error
+      ),
     );
 
     try {
@@ -70,6 +83,13 @@ class UserRepository {
       
       secondaryClient.dispose();
       return newUser;
+    } on AuthException catch (e) {
+      secondaryClient.dispose();
+      if (e.message.contains('already registered')) {
+        throw Exception(
+            'Email ini sudah terdaftar di sistem Autentikasi tetapi datanya tidak lengkap di database. Silakan gunakan email lain atau hapus email ini dari dashboard Supabase (Auth -> Users).');
+      }
+      throw Exception('Gagal membuat user: ${e.message}');
     } catch (e) {
       secondaryClient.dispose();
       throw Exception('Gagal membuat user: $e');
@@ -78,9 +98,60 @@ class UserRepository {
 
   /// Update an existing user.
   Future<UserModel> update(UserModel user) async {
+    // Validate uniqueness before updating
+    final existingEmail = await _supabase.from(_tableName).select('id').eq('email', user.email).neq('id', user.id).maybeSingle();
+    if (existingEmail != null) {
+      throw Exception('Email sudah digunakan oleh karyawan lain.');
+    }
+    final existingCode = await _supabase.from(_tableName).select('id').eq('employeecode', user.employeeCode).neq('id', user.id).maybeSingle();
+    if (existingCode != null) {
+      throw Exception('Kode karyawan sudah digunakan.');
+    }
+
     await _supabase.from(_tableName).update(user.toMap()).eq('id', user.id)
         .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Gagal memperbarui data pengguna karena internet lambat.'));
     return user;
+  }
+
+  /// Admin changes an employee's password.
+  Future<void> changeEmployeePassword(UserModel user, String newPassword) async {
+    // Fetch old password from DB
+    final data = await _supabase.from(_tableName).select('password').eq('id', user.id).maybeSingle()
+        .timeout(const Duration(seconds: 15));
+
+    if (data == null || data['password'] == null) {
+      throw Exception('Password lama tidak ditemukan di database.');
+    }
+    final oldPassword = data['password'] as String;
+
+    final secondaryClient = SupabaseClient(
+      AppConstants.supabaseUrl,
+      AppConstants.supabaseAnonKey,
+      authOptions: const AuthClientOptions(
+        authFlowType: AuthFlowType.implicit,
+      ),
+    );
+
+    try {
+      // Sign in as the employee
+      await secondaryClient.auth.signInWithPassword(
+        email: user.email,
+        password: oldPassword,
+      ).timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat memverifikasi akun.'));
+
+      // Update auth password + table password in parallel
+      await Future.wait([
+        secondaryClient.auth.updateUser(
+          UserAttributes(password: newPassword),
+        ).timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat memperbarui password.')),
+        _supabase.from(_tableName).update({'password': newPassword}).eq('id', user.id)
+            .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat menyimpan data.')),
+      ]);
+    } on AuthException catch (e) {
+      throw Exception('Gagal mengubah password: ${e.message}');
+    } finally {
+      secondaryClient.dispose();
+    }
   }
 
   /// Delete a user by ID.

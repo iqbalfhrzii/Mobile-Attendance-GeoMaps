@@ -1,7 +1,8 @@
 import 'dart:io';
-import 'package:csv/csv.dart';
+import 'dart:typed_data';
+import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart' as syspaths;
+import 'package:file_saver/file_saver.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/attendance_model.dart';
@@ -9,24 +10,28 @@ import '../models/user_model.dart';
 import '../core/enums.dart';
 
 class ExportService {
-  static Future<void> exportAttendancesToCSV(
+  static Future<void> exportAttendancesToExcel(
     List<AttendanceModel> attendances,
     List<UserModel> employees,
   ) async {
     try {
-      // 1. Prepare data rows
-      List<List<dynamic>> rows = [];
-      
+      var excel = Excel.createExcel();
+      Sheet sheetObject = excel['Laporan Absensi'];
+      excel.setDefaultSheet('Laporan Absensi');
+
       // Headers
-      rows.add([
-        'Tanggal',
-        'Nama Karyawan',
-        'Status',
-        'Jam Masuk',
-        'Jam Pulang',
-        'Lokasi Masuk',
-        'Lokasi Pulang',
-        'Durasi (Jam)',
+      sheetObject.appendRow([
+        TextCellValue('Tanggal'),
+        TextCellValue('Nama Karyawan'),
+        TextCellValue('Shift'),
+        TextCellValue('Status Kehadiran'),
+        TextCellValue('Status Lokasi'),
+        TextCellValue('Jam Masuk'),
+        TextCellValue('Jam Pulang'),
+        TextCellValue('Durasi (Jam)'),
+        TextCellValue('Jarak dari Kantor (meter)'),
+        TextCellValue('Latitude'),
+        TextCellValue('Longitude'),
       ]);
 
       final dateFormat = DateFormat('dd-MM-yyyy', 'id_ID');
@@ -34,13 +39,12 @@ class ExportService {
 
       // Populate data
       for (var att in attendances) {
-        // Find employee name
         final employee = employees.firstWhere(
           (e) => e.id == att.userId,
           orElse: () => UserModel(
             id: att.userId,
             employeeCode: '',
-            fullName: 'Unknown User (${att.userId})',
+            fullName: att.employeeName.isNotEmpty ? att.employeeName : 'Unknown User',
             email: '',
             role: UserRole.employee,
             createdAt: DateTime.now(),
@@ -53,39 +57,43 @@ class ExportService {
         String durasi = '-';
         if (att.checkInTime != null && att.checkOutTime != null) {
           final diff = att.checkOutTime!.difference(att.checkInTime!);
-          durasi = (diff.inMinutes / 60.0).toStringAsFixed(2); // e.g. 8.50
+          durasi = (diff.inMinutes / 60.0).toStringAsFixed(2);
         }
 
-        rows.add([
-          dateFormat.format(att.date),
-          employee.fullName,
-          att.attendanceStatus.name,
-          jamMasuk,
-          jamPulang,
-          att.latitude != null && att.longitude != null ? '${att.latitude}, ${att.longitude}' : '-',
-          '-',
-          durasi,
+        sheetObject.appendRow([
+          TextCellValue(dateFormat.format(att.date)),
+          TextCellValue(employee.fullName),
+          TextCellValue(att.shiftName ?? '-'),
+          TextCellValue(att.attendanceStatus.label),
+          TextCellValue(att.locationStatus.label),
+          TextCellValue(jamMasuk),
+          TextCellValue(jamPulang),
+          TextCellValue(durasi),
+          TextCellValue(att.distanceFromOffice != null ? att.distanceFromOffice!.toStringAsFixed(2) : '-'),
+          TextCellValue(att.latitude != null ? att.latitude.toString() : '-'),
+          TextCellValue(att.longitude != null ? att.longitude.toString() : '-'),
         ]);
       }
 
-      // 2. Convert to CSV string
-      String csv = const ListToCsvConverter().convert(rows);
+      // Save the file using file_saver
+      final fileBytes = excel.save();
+      if (fileBytes != null) {
+        final now = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        final fileName = 'Laporan_Absensi_$now';
+        
+        await FileSaver.instance.saveAs(
+          name: fileName,
+          bytes: Uint8List.fromList(fileBytes),
+          ext: 'xlsx',
+          mimeType: MimeType.microsoftExcel,
+        );
 
-      // 3. Save to temporary directory
-      final dir = await syspaths.getTemporaryDirectory();
-      final now = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final path = '${dir.path}/Laporan_Absensi_$now.csv';
-      
-      final file = File(path);
-      await file.writeAsString(csv);
-
-      // 4. Share file
-      await Share.shareXFiles(
-        [XFile(path)],
-        text: 'Laporan Absensi Karyawan',
-      );
+        // Success - completes normally
+      } else {
+        throw Exception('Gagal men-generate file Excel.');
+      }
     } catch (e) {
-      throw Exception('Gagal export CSV: $e');
+      throw Exception('Gagal export Excel: $e');
     }
   }
 }

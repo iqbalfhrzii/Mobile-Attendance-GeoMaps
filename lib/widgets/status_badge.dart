@@ -28,6 +28,8 @@ class StatusBadge extends StatelessWidget {
         return AppTheme.accentTeal.withAlpha(30);
       case AttendanceStatus.sick:
         return AppTheme.accentAmber.withAlpha(30);
+      case AttendanceStatus.earlyLeave:
+        return AppTheme.warningOrange.withAlpha(30);
     }
   }
 
@@ -43,6 +45,8 @@ class StatusBadge extends StatelessWidget {
         return AppTheme.accentTeal;
       case AttendanceStatus.sick:
         return AppTheme.accentAmber;
+      case AttendanceStatus.earlyLeave:
+        return AppTheme.warningOrange;
     }
   }
 

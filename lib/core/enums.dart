@@ -11,6 +11,7 @@ enum UserRole {
 enum AttendanceStatus {
   present('Hadir', '✅'),
   late_('Terlambat', '⏰'),
+  earlyLeave('Pulang Lebih Awal', '🏃'),
   absent('Tidak Hadir', '❌'),
   permission('Izin', '📋'),
   sick('Sakit', '🤒');
