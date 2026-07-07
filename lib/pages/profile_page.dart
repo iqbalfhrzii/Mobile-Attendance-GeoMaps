@@ -144,7 +144,7 @@ class ProfilePage extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'AbsensiGeo v1.0.0',
+              'Mahligai Attendance v1.0.0',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurface.withAlpha(80),
               ),

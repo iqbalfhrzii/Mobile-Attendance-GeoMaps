@@ -2,7 +2,7 @@
 class AppConstants {
   AppConstants._();
 
-  static const String appName = 'AbsensiGeo';
+  static const String appName = 'Mahligai Attendance';
   static const String appTagline = 'Attendance Made Simple';
 
 
