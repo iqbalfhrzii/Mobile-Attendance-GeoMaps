@@ -143,7 +143,7 @@ class LocationConfirmPage extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Anda berada di luar radius kantor. Absensi tetap bisa dilakukan tetapi akan tercatat.',
+                        'Anda berada di luar radius kantor. Absensi tidak dapat dilanjutkan. Harap pastikan Anda berada di area kantor.',
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: AppTheme.warningOrange,
                         ),
@@ -158,21 +158,23 @@ class LocationConfirmPage extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CameraPage(
-                        locationResult: locationResult,
-                        isCheckIn: isCheckIn,
-                        attendanceId: attendanceId,
-                        shiftId: shiftId,
-                        shiftName: shiftName,
-                        isEarlyLeave: isEarlyLeave,
-                      ),
-                    ),
-                  );
-                },
+                onPressed: isInside 
+                    ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CameraPage(
+                              locationResult: locationResult,
+                              isCheckIn: isCheckIn,
+                              attendanceId: attendanceId,
+                              shiftId: shiftId,
+                              shiftName: shiftName,
+                              isEarlyLeave: isEarlyLeave,
+                            ),
+                          ),
+                        );
+                      }
+                    : null,
                 icon: const Icon(Icons.camera_alt_rounded, size: 20),
                 label: const Text('Lanjutkan — Ambil Selfie'),
                 style: FilledButton.styleFrom(
