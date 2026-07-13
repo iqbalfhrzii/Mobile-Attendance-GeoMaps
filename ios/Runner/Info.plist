@@ -57,5 +57,9 @@
 		<string>Aplikasi membutuhkan akses galeri untuk mengunggah foto profil atau lampiran lainnya.</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>UIFileSharingEnabled</key>
+		<true/>
+		<key>LSSupportsOpeningDocumentsInPlace</key>
+		<true/>
 	</dict>
 </plist>

@@ -29,6 +29,8 @@ class ShiftModel {
 
   /// Whether a given [DateTime] counts as late for this shift.
   bool isLate(DateTime time) {
+    if (isCasual) return false;
+    
     final limitMinute = checkInMinute + lateToleranceMinutes;
     final limitHour = checkInHour + (limitMinute ~/ 60);
     final normalizedMinute = limitMinute % 60;
@@ -38,11 +40,37 @@ class ShiftModel {
     return false;
   }
 
+  bool get isCasual => checkInTime == "00:00" && checkOutTime == "23:59";
+
   /// Whether a given [DateTime] is too early to check out.
-  bool isTooEarlyToCheckout(DateTime time) {
+  bool isTooEarlyToCheckout(DateTime time, [DateTime? actualCheckInTime]) {
+    if (isCasual) {
+      return false; // Flexible shift has no minimum hours limit
+    }
+
     if (time.hour < checkOutHour) return true;
-    if (time.hour == checkOutHour && time.minute <= checkOutMinute) return true;
+    if (time.hour == checkOutHour && time.minute < checkOutMinute) return true;
     return false;
+  }
+
+  /// Whether the shift is active based on current time.
+  bool isCurrentlyActive(DateTime time) {
+    if (isCasual) return true; // Casual Shift
+    
+    final currentMinutes = time.hour * 60 + time.minute;
+    // Allow checking in 4 hours (240 minutes) early
+    int startMinutes = checkInHour * 60 + checkInMinute - 240;
+    if (startMinutes < 0) startMinutes += 1440;
+    
+    final endMinutes = checkOutHour * 60 + checkOutMinute;
+
+    if (startMinutes <= endMinutes) {
+      // Normal shift
+      return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+    } else {
+      // Cross-day shift
+      return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+    }
   }
 
   /// String formatted for the exact minute they are allowed to check out.

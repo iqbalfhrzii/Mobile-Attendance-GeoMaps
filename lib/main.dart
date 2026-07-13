@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme.dart';
 import 'core/constants.dart';
 import 'routes/app_router.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +16,9 @@ void main() async {
   );
 
   await initializeDateFormatting('id_ID', null);
+  
+  // Initialize notification service
+  await NotificationService().init();
 
   runApp(const ProviderScope(child: AbsensiGeoApp()));
 }

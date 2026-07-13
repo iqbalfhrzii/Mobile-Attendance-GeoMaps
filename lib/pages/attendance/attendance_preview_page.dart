@@ -10,6 +10,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/shift_provider.dart';
 import '../../services/location_service.dart';
+import '../../services/notification_service.dart';
 
 /// Preview page showing selfie + location data before saving attendance.
 class AttendancePreviewPage extends ConsumerStatefulWidget {
@@ -67,12 +68,31 @@ class _AttendancePreviewPageState extends ConsumerState<AttendancePreviewPage> {
           attendanceStatus: status,
           photoPath: widget.photoPath,
         );
+
+        // Schedule notification for end of shift
+        if (!shift.isCasual) {
+           final now = DateTime.now();
+           DateTime targetTime = DateTime(now.year, now.month, now.day, shift.checkOutHour, shift.checkOutMinute);
+           
+           final checkInMinutes = shift.checkInHour * 60 + shift.checkInMinute;
+           final checkOutMinutes = shift.checkOutHour * 60 + shift.checkOutMinute;
+           
+           if (checkInMinutes > checkOutMinutes) {
+             final nowMinutes = now.hour * 60 + now.minute;
+             if (nowMinutes >= checkInMinutes) {
+                targetTime = targetTime.add(const Duration(days: 1));
+             }
+           }
+           
+           await NotificationService().scheduleCheckoutReminder(targetTime);
+        }
       } else {
         await notifier.checkOut(
           widget.attendanceId!,
           photoPath: widget.photoPath,
           attendanceStatus: widget.isEarlyLeave ? AttendanceStatus.earlyLeave : null,
         );
+        await NotificationService().cancelCheckoutReminder();
       }
 
       if (!mounted) return;

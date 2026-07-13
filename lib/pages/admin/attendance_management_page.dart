@@ -300,7 +300,8 @@ class _AttendanceManagementPageState
                                             fontSize: 16),
                                       ),
                                       const SizedBox(height: 4),
-                                      Row(
+                                      Wrap(
+                                        crossAxisAlignment: WrapCrossAlignment.center,
                                         children: [
                                           const Icon(Icons.schedule_rounded, size: 14, color: Colors.grey),
                                           const SizedBox(width: 4),
@@ -312,9 +313,13 @@ class _AttendanceManagementPageState
                                         ],
                                       ),
                                       const SizedBox(height: 8),
-                                      Text(
-                                        'Masuk: ${att.checkInTime != null ? timeFormat.format(att.checkInTime!) : '-'} • Pulang: ${att.checkOutTime != null ? timeFormat.format(att.checkOutTime!) : '-'}',
-                                        style: theme.textTheme.bodySmall,
+                                      Wrap(
+                                        crossAxisAlignment: WrapCrossAlignment.center,
+                                        children: [
+                                          Text('Masuk: ${att.checkInTime != null ? timeFormat.format(att.checkInTime!) : '-'}', style: theme.textTheme.bodySmall),
+                                          const SizedBox(width: 8),
+                                          Text('•  Pulang: ${att.checkOutTime != null ? timeFormat.format(att.checkOutTime!) : '-'}', style: theme.textTheme.bodySmall),
+                                        ],
                                       ),
                                     ],
                                   ),

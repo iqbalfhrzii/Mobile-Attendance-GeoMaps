@@ -22,6 +22,7 @@ class AttendanceRepository {
           .select()
           .eq('userid', userId)
           .eq('date', todayStr)
+          .order('createdat', ascending: false)
           .limit(1)
           .maybeSingle()
           .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil data absen.'));
@@ -47,8 +48,8 @@ class AttendanceRepository {
     String? photoPath,
   }) async {
     final existing = await getTodayAttendance(userId);
-    if (existing != null) {
-      throw Exception('Anda sudah melakukan absen masuk hari ini.');
+    if (existing != null && existing.checkOutTime == null) {
+      throw Exception('Anda memiliki sesi absen yang belum selesai.');
     }
 
     final now = DateTime.now();

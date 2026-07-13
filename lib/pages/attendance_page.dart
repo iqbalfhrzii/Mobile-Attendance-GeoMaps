@@ -11,6 +11,7 @@ import '../providers/attendance_provider.dart';
 import '../providers/office_location_provider.dart';
 import '../providers/shift_provider.dart';
 import '../services/location_service.dart';
+import '../services/notification_service.dart';
 import '../widgets/gradient_button.dart';
 import 'attendance/location_confirm_page.dart';
 
@@ -31,6 +32,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   late Timer _clockTimer;
   DateTime _now = DateTime.now();
   bool _isLoadingLocation = false;
+  String? _ignoreFinishedAttendanceId;
 
   final LocationService _locationService = LocationService();
 
@@ -223,7 +225,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'WIB',
+                        'WITA',
                         style: TextStyle(
                           color: Colors.white.withAlpha(160),
                           fontSize: 14,
@@ -241,19 +243,30 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
                 data: (attendance) {
-                  // If user has not checked in, show shift selector
-                  if (attendance == null) {
+                  // If user has not checked in or wants a new session, show shift selector
+                  if (attendance == null || (attendance.checkOutTime != null && _ignoreFinishedAttendanceId == attendance.id)) {
                     return allShiftsAsync.when(
                       loading: () => const CircularProgressIndicator(),
                       error: (_, __) => const Text('Gagal memuat jadwal'),
-                      data: (shifts) {
+                      data: (allShifts) {
+                        final shifts = allShifts.where((s) => s.isCurrentlyActive(_now)).toList();
                         final selectedShiftId = ref.watch(selectedShiftIdProvider);
                         
-                        if (selectedShiftId == null && shifts.isNotEmpty) {
-                          // Automatically select the first shift as default
+                        // Validasi jika selectedShiftId tidak ada di daftar shifts yang aktif
+                        final isSelectedValid = shifts.any((s) => s.id == selectedShiftId);
+
+                        if (!isSelectedValid && shifts.isNotEmpty) {
+                          // Automatically select the first active shift
                           WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted)
+                            if (mounted) {
                               ref.read(selectedShiftIdProvider.notifier).state = shifts.first.id;
+                            }
+                          });
+                        } else if (shifts.isEmpty && selectedShiftId != null) {
+                           WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              ref.read(selectedShiftIdProvider.notifier).state = null;
+                            }
                           });
                         }
 
@@ -281,7 +294,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                               value: selectedShiftId,
                               isExpanded: true,
                               icon: const Icon(Icons.expand_more_rounded),
-                              hint: const Text('Pilih Jadwal Shift'),
+                              hint: Text(shifts.isEmpty ? 'Belum ada shift aktif saat ini' : 'Pilih Jadwal Shift'),
                               items: shifts.map((shift) {
                                 return DropdownMenuItem<String>(
                                   value: shift.id,
@@ -377,7 +390,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                   loading: () => const CircularProgressIndicator(),
                   error: (e, _) => Text('Error: $e'),
                   data: (attendance) {
-                    if (attendance == null) {
+                    if (attendance == null || (attendance.checkOutTime != null && _ignoreFinishedAttendanceId == attendance.id)) {
                       return Column(
                         children: [
                           Icon(
@@ -435,7 +448,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                               final shifts = allShiftsAsync.valueOrNull ?? [];
                               final checkedInShift = shifts.where((s) => s.id == attendance.shiftId).firstOrNull;
                               
-                              final isEarly = checkedInShift != null && checkedInShift.isTooEarlyToCheckout(DateTime.now());
+                              final isEarly = checkedInShift != null && checkedInShift.isTooEarlyToCheckout(DateTime.now(), attendance.checkInTime);
 
                               if (isEarly) {
                                 final confirmed = await showDialog<bool>(
@@ -543,6 +556,23 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                           attendance.workDurationFormatted,
                           Icons.timer_outlined,
                           AppTheme.accentTeal,
+                        ),
+                        const SizedBox(height: 24),
+                        FilledButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _ignoreFinishedAttendanceId = attendance.id;
+                            });
+                          },
+                          icon: const Icon(Icons.add_circle_outline),
+                          label: const Text('Mulai Sesi Baru'),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: theme.primaryColor,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
                         ),
                       ],
                     );

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../core/constants.dart';
 import '../core/theme.dart';
 
+import '../services/notification_service.dart';
+
 /// Animated splash screen shown on app launch.
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -21,6 +23,10 @@ class _SplashPageState extends State<SplashPage>
   @override
   void initState() {
     super.initState();
+    
+    // Request notification permissions immediately when the app opens
+    NotificationService().requestPermissions();
+    
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
