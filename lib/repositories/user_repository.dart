@@ -20,7 +20,7 @@ class UserRepository {
     final data = await _supabase
         .from(_tableName)
         .select()
-        .eq('role', UserRole.employee.name)
+        .neq('role', UserRole.admin.name)
         .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil data karyawan.'));
     return data.map((map) => UserModel.fromMap(map)).toList();
   }
@@ -180,7 +180,7 @@ class UserRepository {
     final response = await _supabase
         .from(_tableName)
         .select('id')
-        .eq('role', UserRole.employee.name)
+        .neq('role', UserRole.admin.name)
         .count(CountOption.exact)
         .timeout(const Duration(seconds: 15));
     return response.count;

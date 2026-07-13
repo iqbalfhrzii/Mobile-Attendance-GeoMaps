@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../core/theme.dart';
+import '../core/enums.dart';
 import '../models/shift_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/attendance_provider.dart';
@@ -249,7 +250,15 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                       loading: () => const CircularProgressIndicator(),
                       error: (_, __) => const Text('Gagal memuat jadwal'),
                       data: (allShifts) {
-                        final shifts = allShifts.where((s) => s.isCurrentlyActive(_now)).toList();
+                        final shifts = allShifts.where((s) {
+                          if (!s.isCurrentlyActive(_now)) return false;
+                          if (user.role == UserRole.casual) {
+                            return s.isCasual;
+                          } else if (user.role == UserRole.employee) {
+                            return !s.isCasual;
+                          }
+                          return true;
+                        }).toList();
                         final selectedShiftId = ref.watch(selectedShiftIdProvider);
                         
                         // Validasi jika selectedShiftId tidak ada di daftar shifts yang aktif
@@ -291,7 +300,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: selectedShiftId,
+                              value: isSelectedValid ? selectedShiftId : null,
                               isExpanded: true,
                               icon: const Icon(Icons.expand_more_rounded),
                               hint: Text(shifts.isEmpty ? 'Belum ada shift aktif saat ini' : 'Pilih Jadwal Shift'),

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../core/enums.dart';
 import '../core/theme.dart';
+import '../models/shift_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/attendance_provider.dart';
 import '../providers/shift_provider.dart';
@@ -180,8 +181,25 @@ class _EmployeeDashboard extends ConsumerWidget {
                   final currentAttendance = todayAsync.value;
                   
                   // Filter shifts to only show active ones, plus the currently selected one
-                  var activeShifts = shifts.where((s) => s.isCurrentlyActive(now) || s.id == selectedShiftId).toList();
-                  if (activeShifts.isEmpty) activeShifts = shifts; // fallback
+                  var activeShifts = shifts.where((s) {
+                    // Wajib filter berdasarkan role terlebih dahulu
+                    if (user?.role == UserRole.casual && !s.isCasual) return false;
+                    if (user?.role == UserRole.employee && s.isCasual) return false;
+                    
+                    if (s.id == selectedShiftId) return true;
+                    if (!s.isCurrentlyActive(now)) return false;
+                    
+                    return true;
+                  }).toList();
+                  
+                  if (activeShifts.isEmpty) {
+                    // fallback jika tidak ada shift aktif, tampilkan shift yang sesuai role saja
+                    activeShifts = shifts.where((s) {
+                      if (user?.role == UserRole.casual && !s.isCasual) return false;
+                      if (user?.role == UserRole.employee && s.isCasual) return false;
+                      return true;
+                    }).toList();
+                  }
 
                   if (selectedShiftId == null && activeShifts.isNotEmpty) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {

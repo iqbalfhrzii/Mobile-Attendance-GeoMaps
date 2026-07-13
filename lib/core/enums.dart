@@ -1,7 +1,8 @@
 /// User role in the application.
 enum UserRole {
   admin('Admin'),
-  employee('Karyawan');
+  employee('Karyawan'),
+  casual('Casual');
 
   final String label;
   const UserRole(this.label);
