@@ -177,15 +177,20 @@ class _EmployeeDashboard extends ConsumerWidget {
                 error: (_, __) => const SizedBox.shrink(),
                 data: (shifts) {
                   final selectedShiftId = ref.watch(selectedShiftIdProvider);
+                  final currentAttendance = todayAsync.value;
                   
-                  if (selectedShiftId == null && shifts.isNotEmpty) {
+                  // Filter shifts to only show active ones, plus the currently selected one
+                  var activeShifts = shifts.where((s) => s.isCurrentlyActive(now) || s.id == selectedShiftId).toList();
+                  if (activeShifts.isEmpty) activeShifts = shifts; // fallback
+
+                  if (selectedShiftId == null && activeShifts.isNotEmpty) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (context.mounted)
-                        ref.read(selectedShiftIdProvider.notifier).state = shifts.first.id;
+                        ref.read(selectedShiftIdProvider.notifier).state = activeShifts.first.id;
                     });
                   }
 
-                  final selectedShift = shifts.where((s) => s.id == selectedShiftId).firstOrNull ?? shifts.firstOrNull;
+                  final selectedShift = activeShifts.where((s) => s.id == selectedShiftId).firstOrNull ?? activeShifts.firstOrNull;
 
                   if (selectedShift == null) return const SizedBox.shrink();
 
@@ -210,7 +215,7 @@ class _EmployeeDashboard extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Pilih Shift Hari Ini',
+                                  currentAttendance != null ? 'Shift Terpilih' : 'Pilih Shift Hari Ini',
                                   style: theme.textTheme.labelMedium?.copyWith(
                                     color: theme.colorScheme.onSurface
                                         .withAlpha(140),
@@ -221,7 +226,7 @@ class _EmployeeDashboard extends ConsumerWidget {
                                     value: selectedShift.id,
                                     isExpanded: true,
                                     icon: const Icon(Icons.expand_more_rounded),
-                                    items: shifts.map((shift) {
+                                    items: activeShifts.map((shift) {
                                       return DropdownMenuItem<String>(
                                         value: shift.id,
                                         child: Text(
@@ -232,7 +237,7 @@ class _EmployeeDashboard extends ConsumerWidget {
                                         ),
                                       );
                                     }).toList(),
-                                    onChanged: (val) {
+                                    onChanged: currentAttendance != null ? null : (val) {
                                       if (val != null) {
                                         ref.read(selectedShiftIdProvider.notifier).state = val;
                                       }
@@ -335,7 +340,9 @@ class _EmployeeDashboard extends ConsumerWidget {
                       child: Column(
                         children: [
                           // Status + location
-                          Row(
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            runSpacing: 8,
                             children: [
                               StatusBadge(
                                 status: attendance.attendanceStatus,
