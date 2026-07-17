@@ -96,6 +96,9 @@ class _AttendancePreviewPageState extends ConsumerState<AttendancePreviewPage> {
       }
 
       if (!mounted) return;
+      
+      // Clear override attendance so AttendancePage resets to today's state
+      ref.read(overrideAttendanceProvider.notifier).state = null;
 
       // Pop all the way back to the attendance page
       Navigator.of(context).popUntil((route) => route.isFirst);

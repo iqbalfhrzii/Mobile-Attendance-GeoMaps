@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../core/enums.dart';
 import '../models/attendance_model.dart';
+import '../providers/attendance_provider.dart';
 import 'status_badge.dart';
 
 /// A card displaying a single attendance record.
-class AttendanceCard extends StatelessWidget {
+class AttendanceCard extends ConsumerWidget {
   final AttendanceModel attendance;
 
   const AttendanceCard({super.key, required this.attendance});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final dateFormat = DateFormat('EEEE, d MMM yyyy', 'id_ID');
     final timeFormat = DateFormat('HH:mm');
@@ -87,6 +90,27 @@ class AttendanceCard extends StatelessWidget {
                 ),
               ],
             ),
+            if (attendance.checkOutTime == null) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    ref.read(overrideAttendanceProvider.notifier).state = attendance;
+                    context.go('/main/attendance');
+                  },
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('Absen Pulang Sekarang'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.deepOrange.shade400,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

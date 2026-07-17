@@ -21,6 +21,9 @@ final todayAttendanceProvider =
   },
 );
 
+/// Override attendance for checking out from history.
+final overrideAttendanceProvider = StateProvider<AttendanceModel?>((ref) => null);
+
 /// Attendance history for the current user.
 final attendanceHistoryProvider =
     FutureProvider.autoDispose<List<AttendanceModel>>((ref) async {

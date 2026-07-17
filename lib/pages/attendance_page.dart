@@ -157,11 +157,15 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
     final todayAsync = ref.watch(todayAttendanceProvider);
+    final overrideAttendance = ref.watch(overrideAttendanceProvider);
     final allShiftsAsync = ref.watch(allShiftsProvider);
     final theme = Theme.of(context);
 
-    if (user == null) return const SizedBox.shrink();
+    if (user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
+    final currentAttendance = overrideAttendance ?? todayAsync.value;
     final timeStr = DateFormat('HH:mm:ss').format(_now);
     final dateStr = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(_now);
 
@@ -243,7 +247,8 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
               todayAsync.when(
                 loading: () => const SizedBox.shrink(),
                 error: (_, __) => const SizedBox.shrink(),
-                data: (attendance) {
+                data: (_) {
+                  final attendance = currentAttendance;
                   // If user has not checked in or wants a new session, show shift selector
                   if (attendance == null || (attendance.checkOutTime != null && _ignoreFinishedAttendanceId == attendance.id)) {
                     return allShiftsAsync.when(

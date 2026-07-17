@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../core/enums.dart';
 import '../core/theme.dart';
 import '../providers/auth_provider.dart';
+import '../providers/user_provider.dart';
+import '../providers/attendance_provider.dart';
 import '../services/location_service.dart';
 
 /// Main layout with role-based bottom navigation.
@@ -75,6 +77,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   void _onTap(int index) {
     final user = ref.read(currentUserProvider);
     final isAdmin = user?.role == UserRole.admin;
+    
+    if (index != 1) {
+      ref.read(overrideAttendanceProvider.notifier).state = null;
+    }
 
     switch (index) {
       case 0:
