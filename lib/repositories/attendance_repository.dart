@@ -11,24 +11,38 @@ class AttendanceRepository {
   
   final String _tableName = 'attendances';
 
-  /// Get today's attendance for a user.
+  /// Get today's attendance (or the most recent unfinished attendance) for a user.
   Future<AttendanceModel?> getTodayAttendance(String userId) async {
     final now = DateTime.now();
-    final todayStr = DateTime(now.year, now.month, now.day).toIso8601String();
 
     try {
       final data = await _supabase
           .from(_tableName)
           .select()
           .eq('userid', userId)
-          .eq('date', todayStr)
           .order('createdat', ascending: false)
           .limit(1)
           .maybeSingle()
           .timeout(const Duration(seconds: 15), onTimeout: () => throw Exception('Koneksi lambat saat mengambil data absen.'));
 
       if (data == null) return null;
-      return AttendanceModel.fromMap(data);
+      
+      final record = AttendanceModel.fromMap(data);
+      
+      // Jika absen terakhir belum diselesaikan (belum check out), kembalikan ini!
+      // Agar pengguna bisa check out meskipun ini adalah shift kemarin (Shift Malam).
+      if (record.checkOutTime == null) {
+        return record;
+      }
+      
+      // Jika sudah selesai, pastikan itu adalah absen HARI INI.
+      // Jika itu absen kemarin yang sudah selesai, kembalikan null agar hari ini kosong.
+      final recordDate = record.date;
+      if (recordDate.year == now.year && recordDate.month == now.month && recordDate.day == now.day) {
+        return record;
+      }
+      
+      return null;
     } catch (_) {
       return null;
     }
