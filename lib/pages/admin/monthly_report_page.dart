@@ -79,12 +79,13 @@ class _MonthlyReportPageState extends ConsumerState<MonthlyReportPage> {
                     child: DropdownButtonFormField<int>(
                       value: _selectedYear,
                       decoration: const InputDecoration(labelText: 'Tahun'),
-                      items: [2023, 2024, 2025, 2026, 2027].map((y) {
-                        return DropdownMenuItem(
-                          value: y,
-                          child: Text(y.toString()),
-                        );
-                      }).toList(),
+                      items: [
+                        for (int i = 2024; i <= DateTime.now().year + 20; i++)
+                          DropdownMenuItem(
+                            value: i,
+                            child: Text(i.toString()),
+                          )
+                      ],
                       onChanged: (v) {
                         if (v != null) setState(() => _selectedYear = v);
                       },

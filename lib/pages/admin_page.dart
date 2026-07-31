@@ -35,6 +35,13 @@ class AdminPage extends ConsumerWidget {
         '/admin/reports',
       ),
       _MenuItem(
+        'Rekap Karyawan',
+        Icons.assignment_ind_outlined,
+        const Color(0xFF8B5CF6),
+        'Lihat rekap absensi per orang',
+        '/admin/recap',
+      ),
+      _MenuItem(
         'Kelola Shift',
         Icons.schedule_outlined,
         AppTheme.accentAmber,

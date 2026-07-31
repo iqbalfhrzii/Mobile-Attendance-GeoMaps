@@ -17,6 +17,7 @@ import '../providers/auth_provider.dart';
 import '../pages/admin/employee_management_page.dart';
 import '../pages/admin/attendance_management_page.dart';
 import '../pages/admin/monthly_report_page.dart';
+import '../pages/admin/employee_recap_report_page.dart';
 import '../pages/admin/office_location_settings_page.dart';
 import '../pages/admin/shift_settings_page.dart';
 
@@ -98,6 +99,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin/reports',
         builder: (context, state) => const MonthlyReportPage(),
+      ),
+      GoRoute(
+        path: '/admin/recap',
+        builder: (context, state) => const EmployeeRecapReportPage(),
       ),
       GoRoute(
         path: '/admin/location',
