@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/enums.dart';
+import '../core/wita_time.dart';
 import '../models/attendance_model.dart';
 import '../services/supabase_storage_service.dart';
 import '../core/constants.dart';
@@ -13,7 +14,7 @@ class AttendanceRepository {
 
   /// Get today's attendance (or the most recent unfinished attendance) for a user.
   Future<AttendanceModel?> getTodayAttendance(String userId) async {
-    final now = DateTime.now();
+    final now = WitaTime.now();
 
     try {
       final data = await _supabase
@@ -66,7 +67,7 @@ class AttendanceRepository {
       throw Exception('Anda memiliki sesi absen yang belum selesai.');
     }
 
-    final now = DateTime.now();
+    final now = WitaTime.now();
     String? publicPhotoUrl;
 
     if (photoPath != null) {
@@ -137,7 +138,7 @@ class AttendanceRepository {
     }
 
     final updated = currentRecord.copyWith(
-      checkOutTime: DateTime.now(),
+      checkOutTime: WitaTime.now(),
       checkOutPhotoPath: publicPhotoUrl ?? currentRecord.checkOutPhotoPath,
       attendanceStatus: attendanceStatus ?? currentRecord.attendanceStatus,
     );

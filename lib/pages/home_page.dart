@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../core/enums.dart';
+import '../core/wita_time.dart';
 import '../core/theme.dart';
 import '../models/shift_model.dart';
 import '../providers/auth_provider.dart';
@@ -41,7 +42,7 @@ class _EmployeeDashboard extends ConsumerWidget {
     final shiftAsync = ref.watch(defaultShiftProvider);
     final historyAsync = ref.watch(attendanceHistoryProvider);
     final theme = Theme.of(context);
-    final now = DateTime.now();
+    final now = WitaTime.now();
     final dateStr = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(now);
 
     return SafeArea(
@@ -613,7 +614,7 @@ class _AdminDashboard extends ConsumerWidget {
     final statsAsync = ref.watch(todayStatsProvider);
     final shiftAsync = ref.watch(defaultShiftProvider);
     final theme = Theme.of(context);
-    final now = DateTime.now();
+    final now = WitaTime.now();
     final dateStr = DateFormat('EEEE, d MMMM yyyy', 'id_ID').format(now);
 
     return SafeArea(

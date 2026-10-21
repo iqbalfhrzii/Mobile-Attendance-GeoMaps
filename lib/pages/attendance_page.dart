@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../core/theme.dart';
 import '../core/enums.dart';
+import '../core/wita_time.dart';
 import '../models/shift_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/attendance_provider.dart';
@@ -31,7 +32,7 @@ class AttendancePage extends ConsumerStatefulWidget {
 
 class _AttendancePageState extends ConsumerState<AttendancePage> {
   late Timer _clockTimer;
-  DateTime _now = DateTime.now();
+  DateTime _now = WitaTime.now();
   bool _isLoadingLocation = false;
   String? _ignoreFinishedAttendanceId;
 
@@ -41,7 +42,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
   void initState() {
     super.initState();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _now = DateTime.now());
+      if (mounted) setState(() => _now = WitaTime.now());
     });
   }
 
@@ -462,7 +463,7 @@ class _AttendancePageState extends ConsumerState<AttendancePage> {
                               final shifts = allShiftsAsync.valueOrNull ?? [];
                               final checkedInShift = shifts.where((s) => s.id == attendance.shiftId).firstOrNull;
                               
-                              final isEarly = checkedInShift != null && checkedInShift.isTooEarlyToCheckout(DateTime.now(), attendance.checkInTime);
+                              final isEarly = checkedInShift != null && checkedInShift.isTooEarlyToCheckout(WitaTime.now(), attendance.checkInTime);
 
                               if (isEarly) {
                                 final confirmed = await showDialog<bool>(

@@ -51,9 +51,7 @@ class _ShiftSettingsPageState extends ConsumerState<ShiftSettingsPage> {
 
   String _formatTime(TimeOfDay? time) {
     if (time == null) return '--:--';
-    final now = DateTime.now();
-    final dt = DateTime(now.year, now.month, now.day, time.hour, time.minute);
-    return DateFormat('HH:mm').format(dt);
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
   }
 
   void _showShiftForm({ShiftModel? shift}) {

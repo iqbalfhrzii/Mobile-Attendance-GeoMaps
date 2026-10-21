@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/enums.dart';
 import '../models/attendance_model.dart';
+import '../core/wita_time.dart';
 import '../repositories/attendance_repository.dart';
 import 'auth_provider.dart';
 import 'user_provider.dart';
@@ -45,7 +46,7 @@ final todayAllAttendancesProvider =
     FutureProvider.autoDispose<List<AttendanceModel>>((ref) async {
   final repo = ref.watch(attendanceRepositoryProvider);
   final all = await repo.getAll();
-  final now = DateTime.now();
+  final now = WitaTime.now();
   return all.where((r) =>
       r.date.year == now.year &&
       r.date.month == now.month &&

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/enums.dart';
 import '../../core/theme.dart';
 import '../../models/attendance_model.dart';
+import '../../core/wita_time.dart';
 import '../../models/shift_model.dart';
 import '../../models/user_model.dart';
 import '../../providers/attendance_provider.dart';
@@ -122,9 +123,9 @@ class _AttendanceManagementPageState
                     onPressed: () async {
                       final date = await showDatePicker(
                         context: context,
-                        initialDate: _selectedDate ?? DateTime.now(),
+                        initialDate: _selectedDate ?? WitaTime.now(),
                         firstDate: DateTime(2020),
-                        lastDate: DateTime.now(),
+                        lastDate: WitaTime.now(),
                       );
                       if (date != null) {
                         setState(() => _selectedDate = date);

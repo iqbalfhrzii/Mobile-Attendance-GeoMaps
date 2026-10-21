@@ -1,4 +1,5 @@
 import 'dart:convert';
+import '../core/wita_time.dart';
 
 /// Represents a work shift schedule.
 class ShiftModel {
@@ -75,7 +76,7 @@ class ShiftModel {
 
   /// String formatted for the exact minute they are allowed to check out.
   String get allowedCheckOutTimeStr {
-    final now = DateTime.now();
+    final now = WitaTime.now();
     final allowed = DateTime(now.year, now.month, now.day, checkOutHour, checkOutMinute).add(const Duration(minutes: 1));
     return '${allowed.hour.toString().padLeft(2, '0')}:${allowed.minute.toString().padLeft(2, '0')}';
   }

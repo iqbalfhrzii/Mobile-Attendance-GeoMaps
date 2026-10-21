@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter/foundation.dart';
+import '../core/wita_time.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -57,7 +58,7 @@ class NotificationService {
   Future<void> scheduleCheckoutReminder(DateTime targetTime) async {
     if (!_isInitialized) await init();
 
-    final now = DateTime.now();
+    final now = WitaTime.now();
     if (targetTime.isBefore(now)) return; // Already passed
 
     // Request permission on Android 13+ right before scheduling to ensure Activity is present

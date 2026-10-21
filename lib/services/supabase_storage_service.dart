@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../core/wita_time.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import '../core/constants.dart';
@@ -11,7 +12,7 @@ class SupabaseStorageService {
   Future<String> uploadAttendanceSelfie(
       File imageFile, String userId, String attendanceType) async {
     try {
-      final now = DateTime.now();
+      final now = WitaTime.now();
       final dateStr = DateFormat('yyyy-MM-dd').format(now);
       final timestamp = now.millisecondsSinceEpoch.toString();
       final fileName = '${attendanceType}_$timestamp.jpg';

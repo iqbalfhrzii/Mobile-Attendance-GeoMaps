@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/enums.dart';
+import '../../core/wita_time.dart';
 import '../../core/theme.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/user_provider.dart';
@@ -15,8 +16,8 @@ class MonthlyReportPage extends ConsumerStatefulWidget {
 }
 
 class _MonthlyReportPageState extends ConsumerState<MonthlyReportPage> {
-  int _selectedMonth = DateTime.now().month;
-  int _selectedYear = DateTime.now().year;
+  int _selectedMonth = WitaTime.now().month;
+  int _selectedYear = WitaTime.now().year;
 
   final List<String> _months = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -80,7 +81,7 @@ class _MonthlyReportPageState extends ConsumerState<MonthlyReportPage> {
                       value: _selectedYear,
                       decoration: const InputDecoration(labelText: 'Tahun'),
                       items: [
-                        for (int i = 2024; i <= DateTime.now().year + 20; i++)
+                        for (int i = 2024; i <= WitaTime.now().year + 20; i++)
                           DropdownMenuItem(
                             value: i,
                             child: Text(i.toString()),

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/enums.dart';
 import '../../core/theme.dart';
+import '../../core/wita_time.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/attendance_provider.dart';
 import '../../providers/shift_provider.dart';
@@ -53,7 +54,7 @@ class _AttendancePreviewPageState extends ConsumerState<AttendancePreviewPage> {
         // Cek status keterlambatan
         final shifts = await ref.read(allShiftsProvider.future);
         final shift = shifts.firstWhere((s) => s.id == widget.shiftId, orElse: () => shifts.first);
-        final isLate = shift.isLate(DateTime.now());
+        final isLate = shift.isLate(WitaTime.now());
         final status = isLate ? AttendanceStatus.late_ : AttendanceStatus.present;
 
         await notifier.checkIn(
@@ -71,7 +72,7 @@ class _AttendancePreviewPageState extends ConsumerState<AttendancePreviewPage> {
 
         // Schedule notification for end of shift
         if (!shift.isCasual) {
-           final now = DateTime.now();
+           final now = WitaTime.now();
            DateTime targetTime = DateTime(now.year, now.month, now.day, shift.checkOutHour, shift.checkOutMinute);
            
            final checkInMinutes = shift.checkInHour * 60 + shift.checkInMinute;
@@ -136,7 +137,7 @@ class _AttendancePreviewPageState extends ConsumerState<AttendancePreviewPage> {
     final theme = Theme.of(context);
     final user = ref.watch(currentUserProvider);
     final loc = widget.locationResult;
-    final now = DateTime.now();
+    final now = WitaTime.now();
     final dateStr = DateFormat('dd MMMM yyyy', 'id_ID').format(now);
     final timeStr = DateFormat('HH:mm:ss').format(now);
 

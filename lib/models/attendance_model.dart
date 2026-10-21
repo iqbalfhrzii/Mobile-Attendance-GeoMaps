@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../core/enums.dart';
+import '../core/wita_time.dart';
 
 /// Represents a single attendance record.
 class AttendanceModel {
@@ -118,9 +119,9 @@ class AttendanceModel {
       'employeename': employeeName,
       'shiftid': shiftId,
       'shiftname': shiftName,
-      'date': date.toIso8601String(),
-      'checkintime': checkInTime?.toIso8601String(),
-      'checkouttime': checkOutTime?.toIso8601String(),
+      'date': WitaTime.toDateStr(date),
+      'checkintime': WitaTime.toUtcIso(checkInTime),
+      'checkouttime': WitaTime.toUtcIso(checkOutTime),
       'checkinphotopath': checkInPhotoPath,
       'checkoutphotopath': checkOutPhotoPath,
       'latitude': latitude,
@@ -128,7 +129,7 @@ class AttendanceModel {
       'distancefromoffice': distanceFromOffice,
       'locationstatus': locationStatus.name,
       'attendancestatus': attendanceStatus.name,
-      'createdat': createdAt.toIso8601String(),
+      'createdat': WitaTime.toUtcIso(createdAt),
     };
   }
 
@@ -139,13 +140,9 @@ class AttendanceModel {
       employeeName: map['employeename'] as String,
       shiftId: map['shiftid'] as String? ?? 'SHF001',
       shiftName: map['shiftname'] as String? ?? 'Shift Pagi',
-      date: DateTime.parse(map['date'] as String),
-      checkInTime: map['checkintime'] != null
-          ? DateTime.parse(map['checkintime'] as String)
-          : null,
-      checkOutTime: map['checkouttime'] != null
-          ? DateTime.parse(map['checkouttime'] as String)
-          : null,
+      date: WitaTime.parse(map['date']) ?? WitaTime.today(),
+      checkInTime: WitaTime.parse(map['checkintime']),
+      checkOutTime: WitaTime.parse(map['checkouttime']),
       checkInPhotoPath: map['checkinphotopath'] as String?,
       checkOutPhotoPath: map['checkoutphotopath'] as String?,
       latitude: (map['latitude'] as num?)?.toDouble(),
@@ -155,7 +152,7 @@ class AttendanceModel {
           .firstWhere((e) => e.name == map['locationstatus']),
       attendanceStatus: AttendanceStatus.values
           .firstWhere((e) => e.name == map['attendancestatus']),
-      createdAt: DateTime.parse(map['createdat'] as String),
+      createdAt: WitaTime.parse(map['createdat']) ?? WitaTime.now(),
     );
   }
 

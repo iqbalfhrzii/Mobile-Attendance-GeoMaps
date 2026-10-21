@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/enums.dart';
+import '../../core/wita_time.dart';
 import '../../core/theme.dart';
 import '../../models/user_model.dart';
 import '../../providers/attendance_provider.dart';
@@ -19,8 +20,8 @@ class EmployeeRecapReportPage extends ConsumerStatefulWidget {
 
 class _EmployeeRecapReportPageState
     extends ConsumerState<EmployeeRecapReportPage> {
-  int _selectedMonth = DateTime.now().month;
-  int _selectedYear = DateTime.now().year;
+  int _selectedMonth = WitaTime.now().month;
+  int _selectedYear = WitaTime.now().year;
   bool _isExporting = false;
 
   final List<String> _months = [
@@ -108,7 +109,7 @@ class _EmployeeRecapReportPageState
                   .toList();
 
               // Hitung hari berjalan di bulan terpilih (atau total hari jika bulan lalu)
-              final now = DateTime.now();
+              final now = WitaTime.now();
               int totalDaysInMonth;
               if (_selectedYear == now.year && _selectedMonth == now.month) {
                 totalDaysInMonth = now.day;
@@ -170,7 +171,7 @@ class _EmployeeRecapReportPageState
                               ),
                             ),
                             items: [
-                              for (int i = 2024; i <= DateTime.now().year + 20; i++)
+                              for (int i = 2024; i <= WitaTime.now().year + 20; i++)
                                 DropdownMenuItem(
                                   value: i,
                                   child: Text(i.toString()),

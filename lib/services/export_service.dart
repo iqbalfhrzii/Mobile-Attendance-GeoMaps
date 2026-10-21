@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/attendance_model.dart';
 import '../models/user_model.dart';
 import '../core/enums.dart';
+import '../core/wita_time.dart';
 
 class ExportService {
   static Future<void> exportAttendancesToExcel(
@@ -47,7 +48,7 @@ class ExportService {
             fullName: att.employeeName.isNotEmpty ? att.employeeName : 'Unknown User',
             email: '',
             role: UserRole.employee,
-            createdAt: DateTime.now(),
+            createdAt: WitaTime.now(),
           ),
         );
 
@@ -78,7 +79,7 @@ class ExportService {
       // Save the file using file_saver
       final fileBytes = excel.save();
       if (fileBytes != null) {
-        final now = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+        final now = DateFormat('yyyyMMdd_HHmmss').format(WitaTime.now());
         final fileName = 'Laporan_Absensi_$now';
         
         await FileSaver.instance.saveAs(
@@ -113,7 +114,7 @@ class ExportService {
           .where((a) => a.date.month == month && a.date.year == year)
           .toList();
 
-      final now = DateTime.now();
+      final now = WitaTime.now();
       int totalDaysInMonth;
       if (year == now.year && month == now.month) {
         totalDaysInMonth = now.day;
